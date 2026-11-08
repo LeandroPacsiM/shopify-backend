@@ -74,7 +74,7 @@ class AuthFlowTest {
 
 		Usuario u = usuarios.findByEmail(email).orElseThrow();
 		int codigo = google.getTotpPassword(cryptoService.descifrar(u.getTotpSecret()));
-		var conf = authService.confirmarEnrolamiento(new ConfirmarTotpRequest(email, "Secreta123", codigo));
+		var conf = authService.confirmarEnrolamiento(new ConfirmarTotpRequest(email, "Secreta123", String.format("%06d", codigo)));
 		assertTrue(conf.habilitado());
 		assertEquals(10, conf.backupCodes().size());
 
@@ -85,7 +85,7 @@ class AuthFlowTest {
 		int codigo2 = google.getTotpPassword(cryptoService.descifrar(
 				usuarios.findByEmail(email).orElseThrow().getTotpSecret()));
 		SesionEmitida s1 = authService.verificarTotpLogin(
-				new TotpLoginRequest(email, "Secreta123", codigo2, null), null, null);
+				new TotpLoginRequest(email, "Secreta123", String.format("%06d", codigo2), null), null, null);
 		assertNotNull(s1.accessToken());
 		assertFalse(s1.roles().isEmpty());
 		jwtService.verificar(s1.accessToken());

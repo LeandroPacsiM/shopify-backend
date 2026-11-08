@@ -31,7 +31,24 @@ public class TotpService {
 		return GoogleAuthenticatorQRGenerator.getOtpAuthTotpURL(emisor, cuenta, clave);
 	}
 
+	/**
+	 * El código viaja como texto de 6 dígitos (con ceros a la izquierda).
+	 * La comparación es numérica (`096885` vale 96885), con la ventana
+	 * de `authorize`.
+	 */
+	public boolean verificar(String secreto, String codigo) {
+		if (codigo == null) {
+			return false;
+		}
+		String limpio = codigo.trim();
+		if (!limpio.matches("\\d{6}")) {
+			return false;
+		}
+		return google.authorize(secreto, Integer.parseInt(limpio));
+	}
+
+	/** Compatibilidad con llamadas internas que ya tienen el entero. */
 	public boolean verificar(String secreto, int codigo) {
-		return google.authorize(secreto, codigo);
+		return verificar(secreto, String.format("%06d", codigo));
 	}
 }

@@ -73,7 +73,7 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/auth/totp/confirmar",
 						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\",\"codigo\":123456}" }
+						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\",\"codigo\":\"123456\"}" }
 					}
 				},
 				{
@@ -91,7 +91,7 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/auth/login/totp",
 						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\",\"codigo\":123456}" }
+						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\",\"codigo\":\"123456\"}" }
 					},
 					"event": [
 						{

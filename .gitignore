@@ -1,0 +1,30 @@
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+# Maven wrapper cache
+!.mvn/wrapper/maven-wrapper.jar
+
+# Entornos y secretos (jamás al repo)
+.env
+.env.*
+!.env.example
+*.local.sql
+
+# Frontend (cuando exista)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# IDE y SO
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs locales
+*.log
+npm-debug.log*

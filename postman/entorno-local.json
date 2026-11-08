@@ -1,0 +1,9 @@
+{
+	"id": "entorno-local",
+	"name": "Local",
+	"values": [
+		{ "key": "baseUrl", "value": "http://localhost:8080", "enabled": true },
+		{ "key": "tiendaSlug", "value": "tienda-demo", "enabled": true },
+		{ "key": "accessToken", "value": "", "enabled": true }
+	]
+}

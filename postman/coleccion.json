@@ -1,0 +1,411 @@
+{
+	"info": {
+		"name": "Plataforma Tiendas (local)",
+		"description": "Auth con 2FA + superficies por tienda. Flujo demo: Auth > Storefront > Checkout > Admin > Facturación. Ver diagramas/01, diagramas/10 y docs/10-requerimientos.md. Códigos de email/reset llegan por correo (modo log en consola sin llave Resend).",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "baseUrl", "value": "http://localhost:8080" },
+		{ "key": "tiendaSlug", "value": "tienda-demo" },
+		{ "key": "accessToken", "value": "" }
+	],
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "registro",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/registro",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\",\"nombre\":\"Cliente\",\"apellido\":\"Uno\",\"tiendaSlug\":\"{{tiendaSlug}}\"}" }
+					}
+				},
+				{
+					"name": "email solicitar (reenvía código)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/email/solicitar",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\"}" }
+					}
+				},
+				{
+					"name": "email confirmar (código del correo)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/email/confirmar",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\"token\":\"PEGAR-CODIGO\"}" }
+					}
+				},
+				{
+					"name": "password solicitar (reset)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/password/solicitar",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\"}" }
+					}
+				},
+				{
+					"name": "password confirmar (código + nueva)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/password/confirmar",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\"token\":\"PEGAR-CODIGO\",\"password\":\"NuevaClave123\"}" }
+					}
+				},
+				{
+					"name": "totp iniciar (QR)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/totp/iniciar",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\"}" }
+					}
+				},
+				{
+					"name": "totp confirmar (código app + backup codes)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/totp/confirmar",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\",\"codigo\":123456}" }
+					}
+				},
+				{
+					"name": "login (challenge)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/login",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\"}" }
+					}
+				},
+				{
+					"name": "login totp (guarda accessToken)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/login/totp",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\",\"codigo\":123456}" }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.collectionVariables.set('accessToken', j.accessToken);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "refresh (usa cookie)",
+					"request": { "method": "POST", "url": "{{baseUrl}}/auth/refresh" }
+				},
+				{
+					"name": "logout",
+					"request": { "method": "POST", "url": "{{baseUrl}}/auth/logout" }
+				}
+			]
+		},
+		{
+			"name": "Storefront",
+			"item": [
+				{
+					"name": "productos",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/productos?q=",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "producto por slug",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/productos/:slug",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "agregar al carrito",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/carrito/lineas",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"varianteId\":1,\"cantidad\":2}" }
+					}
+				},
+				{
+					"name": "mis pedidos",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/pedidos",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "eliminar mi cuenta (GDPR anonimiza)",
+					"request": {
+						"method": "DELETE",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Checkout",
+			"item": [
+				{
+					"name": "crear checkout (con contacto V17)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/checkout/orden",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"carritoToken\":\"mi-carrito\",\"direccionEnvioId\":1,\"direccionFacturacionId\":1,\"metodoEnvioId\":1,\"codigoDescuento\":null,\"emailContacto\":\"cliente1@example.com\",\"telefonoContacto\":\"999888777\",\"notasCliente\":\"Llamar antes de entregar\"}" }
+					}
+				},
+				{
+					"name": "confirmar pedido",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/checkout/:id/confirmar",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "pagar (mock o stripe)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/checkout/pedidos/:pedidoId/pagos",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"pasarela\":\"mock\",\"idempotencia\":\"demo-0001\"}" }
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin (tienda)",
+			"item": [
+				{
+					"name": "pedidos",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/admin/pedidos?estado=pagado",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "crear producto",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/productos",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"titulo\":\"Gorra Demo\",\"slug\":\"gorra-demo\",\"estado\":\"borrador\"}" }
+					}
+				},
+				{
+					"name": "reset 2FA usuario",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/usuarios/:id/2fa/reset",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "pasarelas listar",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/admin/pasarelas",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "pasarela registrar/rotar (solo admin)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/pasarelas",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"codigo\":\"stripe\",\"clavePublica\":\"pk_test_...\",\"secreto\":\"sk_test_...;whsec_...\",\"modo\":\"test\"}" }
+					}
+				},
+				{
+					"name": "notificaciones (bandeja V16)",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/admin/notificaciones",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "notificaciones no leídas (badge)",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/admin/notificaciones/no-leidas",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "marcar aviso leído",
+					"request": {
+						"method": "PATCH",
+						"url": "{{baseUrl}}/api/admin/notificaciones/:id/leer",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "facturación ver (V18)",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/admin/facturacion",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "facturación suscribir",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/facturacion/suscribir",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"plan\":\"mensual\"}" }
+					}
+				},
+				{
+					"name": "facturación cancelar",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/facturacion/cancelar",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Ops (super_admin)",
+			"item": [
+				{
+					"name": "tiendas",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/ops/tiendas",
+						"header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+					}
+				},
+				{
+					"name": "auditoria",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/ops/auditoria?entidad=pedidos",
+						"header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+					}
+				}
+			]
+		},
+		{
+			"name": "Webhooks",
+			"item": [
+				{
+					"name": "webhook pago (mock)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/webhooks/pagos/mock",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\"eventId\":\"evt-demo-0001\",\"transaccionId\":\"tx-demo-0001\",\"estado\":\"aprobado\"}" }
+					}
+				},
+				{
+					"name": "webhook stripe crudo (traductor)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/webhooks/pagos/stripe",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Stripe-Signature", "value": "t=1,v1=FIRMA" }
+						],
+						"body": { "mode": "raw", "raw": "{\"id\":\"evt-demo-stripe\",\"type\":\"payment_intent.succeeded\",\"data\":{\"object\":{\"id\":\" demo-tx\",\"amount\":11440}}}" }
+					}
+				},
+				{
+					"name": "webhook facturación (firma whsec)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/webhooks/facturacion",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\"eventId\":\"evt-fact-0001\",\"suscripcionId\":\"sub_test_1\",\"tipo\":\"suscripcion.pagada\",\"firma\":\"t=1,v1=FIRMA\",\"cuerpo\":\"{}\"}" }
+					}
+				}
+			]
+		}
+	]
+}

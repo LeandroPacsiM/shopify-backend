@@ -1,0 +1,17 @@
+package com.tienda.plataforma.pagos.repository;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.tienda.plataforma.pagos.entity.Reembolso;
+
+public interface ReembolsoRepository extends JpaRepository<Reembolso, Long> {
+
+	List<Reembolso> findByPagoId(Long pagoId);
+
+	List<Reembolso> findByPedidoId(Long pedidoId);
+
+	Optional<Reembolso> findByTransaccionExternaId(String transaccionExternaId);
+}

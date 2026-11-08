@@ -9,6 +9,7 @@ import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 /**
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
  * (no rompe flujos; los correos quedan en el log para dev).
  */
 @Service
+@ConditionalOnProperty(name = "mail.proveedor", havingValue = "resend", matchIfMissing = true)
 public class ResendMailService implements MailService {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ResendMailService.class);

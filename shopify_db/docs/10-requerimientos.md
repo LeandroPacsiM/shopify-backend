@@ -109,7 +109,7 @@
 | RNF-SEG-01 | Sin secretos en repo/logs/BD (hash + cifrado, `service_role` solo backend) | Revisión + tests |
 | RNF-SEG-02 | Checkout/Admin `no-store`, `noindex`; CORS restringido; TLS siempre | Headers + config |
 | RNF-SEG-03 | No guardar tarjetas/CVV; dinero solo vía pasarela; PCI fuera de alcance | Revisión |
-| RNF-SEG-04 | Correo (2FA/recuperación) por API HTTPS, nunca SMTP directo (bloqueado en Render free) | Config prod |
+| RNF-SEG-04 | Correo (2FA/recuperación) por API HTTPS, nunca SMTP directo (bloqueado en Render free). Proveedor conmutable: Resend (default) o Brevo (`mail.proveedor`, llave por entorno); sin llave, modo log | Config prod |
 | RNF-SEG-05 | Panel del dueño del software en ruta ofuscada (`/ops-core-management`), protegida con falso 404 y restricción de IP, solo `super_admin`. **Excepción deliberada: Shopify no hace esto** (URLs públicas + auth fuerte); aquí simulamos ser los dueños de la plataforma | BE + FE |
 | RNF-REND-01 | Listados paginados; consultas cubiertas por índices (53→55 explícitos); medir antes de optimizar | `EXPLAIN` + stats |
 | RNF-DISP-01 | Dev local + pgAdmin; prod Supabase (backups) + Render; `DATABASE_URL` por entorno | Deploy |

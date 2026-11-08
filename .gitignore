@@ -17,6 +17,12 @@ frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 
+# Postman: artefactos de sincronización local (la colección entregable
+# es coleccion.json + entorno-local.json; no conectar esta carpeta)
+postman/.postman/
+postman/postman/
+postman/Plataforma Tiendas (local)/
+
 # IDE y SO
 .idea/
 .vscode/

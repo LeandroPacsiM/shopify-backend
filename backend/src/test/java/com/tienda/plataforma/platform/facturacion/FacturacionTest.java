@@ -45,7 +45,7 @@ import com.tienda.plataforma.venta.service.PedidoService;
 /** RF-BILL: suscripción por tienda, freeze por impago, webhook idempotente. Rollback al final. */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 @TestPropertySource(properties = "stripe.platform-whsec=whsec_test_fact")
 @Transactional
 class FacturacionTest {

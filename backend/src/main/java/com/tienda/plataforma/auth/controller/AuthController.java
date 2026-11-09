@@ -7,6 +7,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tienda.plataforma.auth.dto.ConfirmarTotpRequest;
+import com.tienda.plataforma.auth.dto.CrearTiendaRequest;
 import com.tienda.plataforma.auth.dto.CredencialesRequest;
 import com.tienda.plataforma.auth.dto.EmailRequest;
 import com.tienda.plataforma.auth.dto.LoginRequest;
@@ -27,8 +29,11 @@ import com.tienda.plataforma.auth.dto.TokenRequest;
 import com.tienda.plataforma.auth.dto.TotpConfirmadoResponse;
 import com.tienda.plataforma.auth.dto.TotpLoginRequest;
 import com.tienda.plataforma.auth.dto.TokensResponse;
+import com.tienda.plataforma.auth.dto.TiendaCreadaResponse;
 import com.tienda.plataforma.auth.service.AuthService;
 import com.tienda.plataforma.auth.service.AuthService.SesionEmitida;
+import com.tienda.plataforma.shared.exception.NoAutorizadoException;
+import com.tienda.plataforma.tenants.service.TiendaOnboardingService;
 
 import jakarta.validation.Valid;
 
@@ -41,10 +46,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class AuthController {
 
 	private final AuthService authService;
+	private final TiendaOnboardingService onboarding;
 	private final boolean cookieSecure;
 
-	public AuthController(AuthService authService, @Value("${cookie.secure:false}") boolean cookieSecure) {
+	public AuthController(AuthService authService, TiendaOnboardingService onboarding,
+			@Value("${cookie.secure:false}") boolean cookieSecure) {
 		this.authService = authService;
+		this.onboarding = onboarding;
 		this.cookieSecure = cookieSecure;
 	}
 
@@ -53,6 +61,19 @@ public class AuthController {
 	@Operation(summary = "Registra usuario + cliente + rol en la tienda del slug")
 	public RegistroResponse registro(@Valid @RequestBody RegistroRequest req) {
 		return authService.registrar(req);
+	}
+
+	@PostMapping("/tiendas")
+	@ResponseStatus(HttpStatus.CREATED)
+	@Operation(summary = "Crea la tienda del comerciante autenticado (queda admin, suscripción pendiente)")
+	public TiendaCreadaResponse crearTienda(@Valid @RequestBody CrearTiendaRequest req) {
+		Object principal = SecurityContextHolder.getContext().getAuthentication() == null
+				? null
+				: SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+		if (!(principal instanceof Long usuarioId)) {
+			throw new NoAutorizadoException("sin autenticación");
+		}
+		return onboarding.crear(usuarioId, req);
 	}
 
 	@PostMapping("/totp/iniciar")
@@ -92,11 +113,21 @@ public class AuthController {
 	}
 
 	@PostMapping("/logout")
-	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void logout(@CookieValue(value = "refresh", required = false) String refresh) {
+	@Operation(summary = "Revoca el refresh y expira su cookie HttpOnly")
+	public ResponseEntity<Void> logout(@CookieValue(value = "refresh", required = false) String refresh) {
 		if (refresh != null) {
 			authService.logout(refresh);
 		}
+		ResponseCookie expirada = ResponseCookie.from("refresh", "")
+				.httpOnly(true)
+				.secure(cookieSecure)
+				.path("/")
+				.maxAge(Duration.ZERO)
+				.sameSite("Lax")
+				.build();
+		return ResponseEntity.noContent()
+				.header(HttpHeaders.SET_COOKIE, expirada.toString())
+				.build();
 	}
 
 	@PostMapping("/email/solicitar")

@@ -1,6 +1,7 @@
 package com.tienda.plataforma.pagos.adapter;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
@@ -26,15 +27,20 @@ public class MockAdapter implements PaymentAdapter {
 		if (!TiendaPasarela.TEST.equals(credenciales.getModo())) {
 			throw new IllegalStateException("mock solo en modo test");
 		}
-		return new CargoResultado("mock-tx-" + UUID.randomUUID(), Pago.PROCESANDO, "mock");
+		UUID transaccion = UUID.nameUUIDFromBytes(("mock-payment:" + idempotencia)
+				.getBytes(StandardCharsets.UTF_8));
+		return new CargoResultado("mock-tx-" + transaccion, Pago.PROCESANDO, "mock");
 	}
 
 	@Override
-	public ReembolsoResultado reembolsar(TiendaPasarela credenciales, String transaccionId, BigDecimal monto) {
+	public ReembolsoResultado reembolsar(TiendaPasarela credenciales, String transaccionId,
+			BigDecimal monto, String idempotencia) {
 		if (!TiendaPasarela.TEST.equals(credenciales.getModo())) {
 			throw new IllegalStateException("mock solo en modo test");
 		}
-		return new ReembolsoResultado("mock-rf-" + UUID.randomUUID(), Reembolso.PROCESANDO);
+		UUID refundId = UUID.nameUUIDFromBytes(("mock-refund:" + idempotencia)
+				.getBytes(StandardCharsets.UTF_8));
+		return new ReembolsoResultado("mock-rf-" + refundId, Reembolso.PROCESANDO);
 	}
 
 	@Override

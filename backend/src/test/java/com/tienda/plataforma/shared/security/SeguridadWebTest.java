@@ -17,7 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 /** RNF-SEG-02: no-store/noindex en checkout+admin; CORS solo al SPA. */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 class SeguridadWebTest {
 
 	@Autowired
@@ -59,5 +59,39 @@ class SeguridadWebTest {
 				.header("Origin", "https://evil.example.com")
 				.header("Access-Control-Request-Method", "GET"))
 				.andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+	}
+
+	@Test
+	void authComparteCorsDelSpa() throws Exception {
+		mvc.perform(options("/auth/login")
+				.header("Origin", "http://localhost:5173")
+				.header("Access-Control-Request-Method", "POST")
+				.header("Access-Control-Request-Headers", "Content-Type"))
+				.andExpect(status().isOk())
+				.andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+
+		mvc.perform(options("/auth/refresh")
+				.header("Origin", "https://evil.example.com")
+				.header("Access-Control-Request-Method", "POST"))
+				.andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+	}
+
+	@Test
+	void preflightPermiteCarritoYTienda() throws Exception {
+		mvc.perform(options("/api/storefront/demo/carrito")
+				.header("Origin", "http://localhost:5173")
+				.header("Access-Control-Request-Method", "POST")
+				.header("Access-Control-Request-Headers", "X-Carrito-Token, X-Tienda-Slug, Content-Type"))
+				.andExpect(status().isOk())
+				.andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+	}
+
+	@Test
+	void logoutExpiraLaCookie() throws Exception {
+		mvc.perform(post("/auth/logout"))
+				.andExpect(status().isNoContent())
+				.andExpect(header().exists("Set-Cookie"))
+				.andExpect(header().string("Set-Cookie",
+						org.hamcrest.Matchers.containsString("Max-Age=0")));
 	}
 }

@@ -207,9 +207,9 @@ La unicidad de combinaciones completas de opciones, una ficha de inventario por 
 
 No existen `CHECK` para los estados de `historial_estados_pedido`, `pago_eventos` o `envio_eventos`, ni para `metacampos.tipo`. Tampoco hay constraints que verifiquen fórmulas de totales, sumas de pagos o reembolsos, sumas de envíos, relación entre stock disponible y reservado, porcentaje máximo de descuento, `usos_actuales <= uso_maximo`, vigencias o transiciones. Esas validaciones son de aplicación y deben ejecutarse con transacciones y control de concurrencia cuando varias solicitudes puedan modificar los mismos datos.
 
-## Inventario completo de los 66 índices explícitos
+## Inventario completo de los 71 índices explícitos
 
-Los índices siguientes son los 52 `CREATE INDEX` del script V1 más `idx_codigos_recuperacion_usuario` (V2), `idx_sesiones_familia` (V8), `idx_pedido_impuestos_pedido` (V9), `idx_tienda_pasarelas_tienda` (V10), los 9 `idx_*_tienda` (V11) e `idx_tienda_usuarios_usuario` (V12), sin contar los índices que PostgreSQL crea implícitamente para claves primarias y constraints `UNIQUE`. Son índices de búsqueda; por sí solos no añaden unicidad ni autorización.
+Los índices siguientes son los 52 `CREATE INDEX` del script V1 más `idx_codigos_recuperacion_usuario` (V2), `idx_sesiones_familia` (V8), `idx_pedido_impuestos_pedido` (V9), `idx_tienda_pasarelas_tienda` (V10), los 9 `idx_*_tienda` (V11), `idx_tienda_usuarios_usuario` (V12), `idx_tokens_cuenta_usuario` (V15), `idx_notificaciones_tienda` (V16), `idx_suscripcion_eventos_suscripcion` (V18) e `idx_checkout_descuentos_checkout` + `idx_checkout_descuentos_descuento` (V19), sin contar los índices que PostgreSQL crea implícitamente para claves primarias y constraints `UNIQUE`. Son índices de búsqueda; por sí solos no añaden unicidad ni autorización.
 
 ### Usuarios, clientes y auditoría: 7
 
@@ -326,6 +326,16 @@ Los índices siguientes son los 52 `CREATE INDEX` del script V1 más `idx_codigo
 | `idx_listas_deseos_cliente` | `listas_deseos(cliente_id)` | Localizar listas de un cliente. |
 | `idx_lista_deseo_items_lista` | `lista_deseo_items(lista_deseo_id)` | Cargar productos de una lista. |
 | `idx_lista_deseo_items_producto` | `lista_deseo_items(producto_id)` | Localizar listas que contienen un producto. |
+
+### Tokens, notificaciones y suscripciones: 3
+
+| Índice | Columnas | Propósito |
+|---|---|---|
+| `idx_tokens_cuenta_usuario` | `tokens_cuenta(usuario_id)` | Localizar tokens de verificación y reset de un usuario (V15). |
+| `idx_notificaciones_tienda` | `notificaciones(tienda_id)` | Bandeja de avisos de una tienda (V16). |
+| `idx_suscripcion_eventos_suscripcion` | `suscripcion_eventos(suscripcion_id)` | Deduplicar eventos de facturación (V18). |
+| `idx_checkout_descuentos_checkout` | `checkout_descuentos(checkout_sesion_id)` | Códigos aplicados a un checkout (V19). |
+| `idx_checkout_descuentos_descuento` | `checkout_descuentos(descuento_id)` | Usos de un descuento en checkouts (V19). |
 
 ## Auditoría
 

@@ -32,6 +32,11 @@ public class ManejadorErrores {
 		return cuerpo(HttpStatus.FORBIDDEN, e.getMessage());
 	}
 
+	@ExceptionHandler(SolicitudInvalidaException.class)
+	public ResponseEntity<Map<String, Object>> solicitudInvalida(SolicitudInvalidaException e) {
+		return cuerpo(HttpStatus.BAD_REQUEST, e.getMessage());
+	}
+
 	private ResponseEntity<Map<String, Object>> cuerpo(HttpStatus estado, String mensaje) {
 		return ResponseEntity.status(estado)
 				.body(Map.of("codigo", estado.value(), "mensaje", mensaje, "cuando", Instant.now().toString()));

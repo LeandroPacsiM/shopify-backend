@@ -9,4 +9,6 @@ import com.tienda.plataforma.envios.entity.EnvioEvento;
 public interface EnvioEventoRepository extends JpaRepository<EnvioEvento, Long> {
 
 	List<EnvioEvento> findByEnvioIdOrderByOcurridoEnAsc(Long envioId);
+
+	boolean existsByEnvioIdAndReferenciaExterna(Long envioId, String referenciaExterna);
 }

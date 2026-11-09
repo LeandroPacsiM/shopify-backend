@@ -30,12 +30,14 @@ public class AdminPagoController {
 	}
 
 	@PostMapping("/{id}/reembolsos")
-	@Operation(summary = "Reembolsa parcial o totalmente un pago aprobado")
+	@Operation(summary = "Reembolsa un pago aprobado; requiere Idempotency-Key estable por reintento")
 	public ReembolsoResponse reembolsar(@PathVariable Long id,
+			@RequestHeader("Idempotency-Key") String idempotencia,
 			@Valid @RequestBody CrearReembolsoRequest req) {
 		if (TenantContext.actual() == null) {
 			throw new NoAutorizadoException("sin tienda");
 		}
-		return pagoService.reembolsar(TenantContext.actual().getId(), id, req.monto(), req.motivo());
+		return pagoService.reembolsar(TenantContext.actual().getId(), id,
+				req.monto(), req.motivo(), idempotencia);
 	}
 }

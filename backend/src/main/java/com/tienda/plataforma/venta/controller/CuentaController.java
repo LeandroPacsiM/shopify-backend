@@ -7,6 +7,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,6 +32,10 @@ import com.tienda.plataforma.venta.dto.CrearDireccionRequest;
 import com.tienda.plataforma.venta.dto.CrearDireccionRequest.DireccionResponse;
 import com.tienda.plataforma.venta.dto.CrearResenaRequest;
 import com.tienda.plataforma.venta.dto.PedidoResponse;
+import com.tienda.plataforma.venta.dto.PerfilResponse;
+import com.tienda.plataforma.venta.dto.ActualizarPerfilRequest;
+import com.tienda.plataforma.venta.dto.ResenaPropiaResponse;
+import com.tienda.plataforma.venta.dto.WishlistItemResponse;
 import com.tienda.plataforma.venta.entity.ListaDeseoItem;
 import com.tienda.plataforma.venta.entity.ListaDeseos;
 import com.tienda.plataforma.venta.entity.Resena;
@@ -119,6 +124,34 @@ public class CuentaController {
 				.toList();
 	}
 
+	@GetMapping("/perfil")
+	public PerfilResponse perfil(@PathVariable String slug) {
+		Cliente cliente = clienteDe(slug);
+		return new PerfilResponse(cliente.getNombre(), cliente.getApellido(),
+				cliente.getTelefono(), cliente.getAceptaMarketing());
+	}
+
+	@PatchMapping("/perfil")
+	@Transactional
+	public PerfilResponse actualizarPerfil(@PathVariable String slug,
+			@Valid @RequestBody ActualizarPerfilRequest req) {
+		Cliente cliente = clienteDe(slug);
+		if (req.nombre() != null) {
+			cliente.setNombre(normalizar(req.nombre()));
+		}
+		if (req.apellido() != null) {
+			cliente.setApellido(normalizar(req.apellido()));
+		}
+		if (req.telefono() != null) {
+			cliente.setTelefono(normalizar(req.telefono()));
+		}
+		if (req.aceptaMarketing() != null) {
+			cliente.setAceptaMarketing(req.aceptaMarketing());
+		}
+		return new PerfilResponse(cliente.getNombre(), cliente.getApellido(),
+				cliente.getTelefono(), cliente.getAceptaMarketing());
+	}
+
 	@PostMapping("/wishlist/{productoId}")
 	@Transactional
 	public void agregarWishlist(@PathVariable String slug, @PathVariable Long productoId) {
@@ -145,6 +178,41 @@ public class CuentaController {
 			item.setCreadoEn(Instant.now());
 			listaItems.save(item);
 		}
+	}
+
+	@GetMapping("/wishlist")
+	public List<WishlistItemResponse> wishlist(@PathVariable String slug) {
+		Cliente cliente = clienteDe(slug);
+		return listas.findByClienteIdAndNombre(cliente.getId(), "Favoritos")
+				.map(l -> listaItems.findByListaDeseosId(l.getId()).stream()
+						.map(i -> new WishlistItemResponse(i.getProducto().getId(),
+								i.getProducto().getTitulo(), i.getProducto().getSlug()))
+						.toList())
+				.orElse(List.of());
+	}
+
+	@DeleteMapping("/wishlist/{productoId}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	@Transactional
+	public void quitarWishlist(@PathVariable String slug, @PathVariable Long productoId) {
+		Cliente cliente = clienteDe(slug);
+		ListaDeseos lista = listas.findByClienteIdAndNombre(cliente.getId(), "Favoritos")
+				.orElseThrow(() -> new NoEncontradoException("wishlist"));
+		ListaDeseoItem item = listaItems.findByListaDeseosId(lista.getId()).stream()
+				.filter(i -> i.getProducto().getId().equals(productoId))
+				.findFirst()
+				.orElseThrow(() -> new NoEncontradoException("wishlist"));
+		listaItems.delete(item);
+	}
+
+	@GetMapping("/resenas")
+	public List<ResenaPropiaResponse> misResenas(@PathVariable String slug) {
+		Cliente cliente = clienteDe(slug);
+		return resenas.findByClienteId(cliente.getId()).stream()
+				.map(r -> new ResenaPropiaResponse(r.getId(),
+						r.getProducto() == null ? null : r.getProducto().getId(),
+						r.getCalificacion(), r.getTitulo(), r.getComentario(), r.getAprobada()))
+				.toList();
 	}
 
 	@PostMapping("/resenas")
@@ -189,5 +257,10 @@ public class CuentaController {
 			throw new NoEncontradoException("tienda");
 		}
 		return cliente;
+	}
+
+	private String normalizar(String valor) {
+		String limpio = valor.trim();
+		return limpio.isEmpty() ? null : limpio;
 	}
 }

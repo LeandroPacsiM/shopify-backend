@@ -28,7 +28,7 @@ import com.tienda.plataforma.tenants.repository.TiendaRepository;
  * limpio el sandbox. La suscripción queda pendiente hasta el webhook real.
  */
 @SpringBootTest
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 @Transactional
 class StripeFacturacionVivoIT {
 

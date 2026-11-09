@@ -12,7 +12,9 @@ public interface PaymentAdapter {
 
 	CargoResultado autorizar(TiendaPasarela credenciales, BigDecimal monto, String moneda, String idempotencia);
 
-	ReembolsoResultado reembolsar(TiendaPasarela credenciales, String transaccionId, BigDecimal monto);
+	/** La clave se conserva entre reintentos de la misma solicitud de reembolso. */
+	ReembolsoResultado reembolsar(TiendaPasarela credenciales, String transaccionId,
+			BigDecimal monto, String idempotencia);
 
 	boolean verificaFirma(TiendaPasarela credenciales, String cuerpo, String firma);
 

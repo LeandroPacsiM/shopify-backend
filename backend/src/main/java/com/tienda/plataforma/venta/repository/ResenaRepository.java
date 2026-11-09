@@ -11,6 +11,8 @@ public interface ResenaRepository extends JpaRepository<Resena, Long> {
 
 	List<Resena> findByProductoIdAndAprobadaTrue(Long productoId);
 
+	List<Resena> findByProductoTiendaId(Long tiendaId);
+
 	List<Resena> findByClienteId(Long clienteId);
 
 	Optional<Resena> findByProductoIdAndClienteId(Long productoId, Long clienteId);

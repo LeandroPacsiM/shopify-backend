@@ -1,6 +1,7 @@
 package com.tienda.plataforma.tenants;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
@@ -30,7 +31,7 @@ import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
 /** RF-BILL: tienda congelada bloquea todo salvo su facturación. Rollback al final. */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 @Transactional
 class TiendaCongeladaTest {
 
@@ -97,6 +98,11 @@ class TiendaCongeladaTest {
 
 		mvc.perform(get("/api/admin/pedidos")
 				.header("Authorization", "Bearer " + jwtAdmin)
+				.header("X-Tienda-Slug", tienda.getSlug()))
+				.andExpect(status().isForbidden());
+
+		mvc.perform(post("/api/checkout/{id}/confirmar", 999999L)
+				.header("Authorization", "Bearer " + jwtCliente)
 				.header("X-Tienda-Slug", tienda.getSlug()))
 				.andExpect(status().isForbidden());
 

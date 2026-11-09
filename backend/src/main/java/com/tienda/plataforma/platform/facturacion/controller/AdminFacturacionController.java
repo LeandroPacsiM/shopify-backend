@@ -35,7 +35,7 @@ public class AdminFacturacionController {
 	}
 
 	@PostMapping("/suscribir")
-	@Operation(summary = "Crea o cambia el plan (pendiente hasta el primer pago)")
+	@Operation(summary = "Crea o cambia el plan; devuelve el client_secret del primer pago")
 	public SuscripcionResponse suscribir(@Valid @RequestBody SuscribirRequest req) {
 		return facturacion.suscribir(tiendaId(), req.plan());
 	}

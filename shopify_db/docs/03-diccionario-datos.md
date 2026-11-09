@@ -1,6 +1,6 @@
 # Diccionario de datos de Shopify DB
 
-Este documento describe las 58 tablas (V1 en `database/01_esquema_shopify.sql` + `usuario_codigos_recuperacion` de V2 + `pedido_impuestos` de V9 + `tiendas`, `tienda_pasarelas` y `tienda_usuarios` de V10–V12 + `tokens_cuenta` de V15 + `notificaciones` de V16 + `suscripciones` y `suscripcion_eventos` de V18) para PostgreSQL. Las tablas se presentan en el mismo orden del esquema y cada columna conserva su tipo, nulabilidad, valores predeterminados y restricciones declaradas. Los cambios de las migraciones V2–V18 se indican con su versión.
+Este documento describe las 59 tablas (V1 en `database/01_esquema_shopify.sql` + `usuario_codigos_recuperacion` de V2 + `pedido_impuestos` de V9 + `tiendas`, `tienda_pasarelas` y `tienda_usuarios` de V10–V12 + `tokens_cuenta` de V15 + `notificaciones` de V16 + `suscripciones` y `suscripcion_eventos` de V18 + `checkout_descuentos` de V19) para PostgreSQL. Las tablas se presentan en el mismo orden del esquema y cada columna conserva su tipo, nulabilidad, valores predeterminados y restricciones declaradas. Los cambios de las migraciones V2–V19 se indican con su versión.
 
 ## Convenciones
 
@@ -706,6 +706,17 @@ Este documento describe las 58 tablas (V1 en `database/01_esquema_shopify.sql` +
 | descuento_id | BIGINT | FK a descuentos(id) ON DELETE RESTRICT; UNIQUE compuesto uq_pedido_descuento (pedido_id, descuento_id) | No | Descuento aplicado; no puede eliminarse mientras esté usado por pedidos. Un código, una vez por pedido (V6). |
 | monto_aplicado | NUMERIC(12,2) | CHECK (monto_aplicado >= 0) | No | Importe del beneficio registrado en el pedido. |
 
+## checkout_descuentos
+
+**Descripción:** Registra los descuentos aplicados a cada checkout y el importe calculado; al confirmar se trasladan a `pedido_descuentos` (V19).
+
+| Campo | Tipo | Restricciones | Nulo | Descripción |
+|---|---|---|---|---|
+| id | BIGSERIAL | PK | No | Identificador de la aplicación del descuento. |
+| checkout_sesion_id | BIGINT | FK a checkout_sesiones(id) ON DELETE CASCADE; UNIQUE compuesto uq_checkout_descuento (checkout_sesion_id, descuento_id) | No | Checkout beneficiado por el descuento. |
+| descuento_id | BIGINT | FK a descuentos(id) ON DELETE RESTRICT; UNIQUE compuesto uq_checkout_descuento (checkout_sesion_id, descuento_id) | No | Descuento aplicado; un código, una vez por checkout (V19). |
+| monto_aplicado | NUMERIC(12,2) | CHECK (monto_aplicado >= 0) | No | Importe del beneficio calculado en el checkout. |
+
 ## descuento_productos
 
 **Descripción:** Resume los productos a los que se limita un descuento y evita asociaciones repetidas.
@@ -815,8 +826,8 @@ Este documento describe las 58 tablas (V1 en `database/01_esquema_shopify.sql` +
 | tienda_id | BIGINT | UNIQUE; FK a tiendas(id) ON DELETE RESTRICT | No | Tienda suscrita; la baja es desactivar. |
 | plan | VARCHAR(20) | CHECK (mensual, anual) | No | Ciclo de facturación. |
 | estado | VARCHAR(20) | DEFAULT 'pendiente'; CHECK (pendiente, activa, vencida, cancelada) | No | Máquina de estados (V18). |
-| stripe_customer_id | VARCHAR(255) | — | Sí | Customer de Stripe (V19). |
-| stripe_subscription_id | VARCHAR(255) | UNIQUE | Sí | Subscription de Stripe; varios NULL conviven (V19). |
+| stripe_customer_id | VARCHAR(255) | — | Sí | Customer de Stripe (V18; solo modo test). |
+| stripe_subscription_id | VARCHAR(255) | UNIQUE | Sí | Subscription de Stripe; varios NULL conviven (V18; solo modo test). |
 | periodo_fin | TIMESTAMPTZ | — | Sí | Fin del periodo pagado; lo fija el webhook (+30/+365 días). |
 | creado_en | TIMESTAMPTZ | DEFAULT NOW() | No | Fecha y hora de creación. |
 | actualizado_en | TIMESTAMPTZ | DEFAULT NOW() | No | Última actualización (trigger V7). |

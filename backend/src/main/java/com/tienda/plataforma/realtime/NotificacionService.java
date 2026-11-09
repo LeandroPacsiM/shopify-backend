@@ -67,9 +67,14 @@ public class NotificacionService {
 	}
 
 	@Transactional(readOnly = true)
-	public List<NotificacionResponse> listar(Long tiendaId) {
-		return notificaciones.findByTiendaIdOrderByCreadoEnDesc(tiendaId).stream()
-				.map(this::responder).toList();
+	public org.springframework.data.domain.Page<NotificacionResponse> listar(Long tiendaId,
+			Integer pagina, Integer tamano) {
+		int page = pagina == null || pagina < 0 ? 0 : pagina;
+		int size = tamano == null ? 20 : Math.min(Math.max(tamano, 1), 50);
+		var paginacion = org.springframework.data.domain.PageRequest.of(page, size,
+				org.springframework.data.domain.Sort.by(
+						org.springframework.data.domain.Sort.Direction.DESC, "creadoEn"));
+		return notificaciones.findByTiendaId(tiendaId, paginacion).map(this::responder);
 	}
 
 	@Transactional(readOnly = true)

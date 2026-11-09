@@ -19,7 +19,7 @@ import com.tienda.plataforma.tenants.repository.TiendaRepository;
 
 /** Purga: solo leídas hace +90 días; no leídas y recientes quedan. Rollback al final. */
 @SpringBootTest
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 @Transactional
 class NotificacionPurgaTest {
 

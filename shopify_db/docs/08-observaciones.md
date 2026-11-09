@@ -4,7 +4,7 @@
 
 Este documento registra riesgos, limitaciones, mejoras y trabajo pendiente detectados en `database/01_esquema_shopify.sql`. Las observaciones describen el estado actual y **no implican que las recomendaciones ya estén implementadas**, salvo la corrección del comentario de base de datos indicada a continuación.
 
-El esquema actual define 54 tablas, 79 claves foráneas, restricciones `PRIMARY KEY`, `UNIQUE` y `CHECK`, además de índices secundarios y triggers de `actualizado_en` (V7). La base cubre un recorrido amplio de comercio electrónico; las reglas que siguen delegadas a la aplicación se indican en cada punto.
+El esquema actual define 59 tablas, 86 claves foráneas, restricciones `PRIMARY KEY`, `UNIQUE` y `CHECK`, además de índices secundarios y triggers de `actualizado_en` (V7). La base cubre un recorrido amplio de comercio electrónico; las reglas que siguen delegadas a la aplicación se indican en cada punto.
 
 ## Corrección aplicada del comentario de base de datos
 

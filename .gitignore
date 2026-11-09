@@ -11,6 +11,8 @@ target/
 .env.*
 !.env.example
 *.local.sql
+# Config local del agente (puede traer credenciales; cada máquina la suya)
+opencode.json
 
 # Frontend (cuando exista)
 frontend/node_modules/

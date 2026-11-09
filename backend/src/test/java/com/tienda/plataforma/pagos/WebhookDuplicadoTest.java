@@ -35,7 +35,7 @@ import com.tienda.plataforma.venta.repository.PedidoRepository;
 /** Webhook duplicado aplica una sola transición (suite AGENTS.md). */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 class WebhookDuplicadoTest {
 
 	@Autowired

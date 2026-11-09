@@ -4,7 +4,7 @@
 
 Definir un conjunto mínimo, reproducible y claramente ficticio de datos para demostrar el recorrido principal del sistema: catálogo con variantes, inventario, carrito, checkout, pedido, pagos, reembolso, envío y seguimiento. Los datos también deben permitir comprobar las relaciones del esquema y detectar errores de integridad sin depender de servicios externos.
 
-La fuente de verdad estructural es `database/01_esquema_shopify.sql` más `database/migrations/V2–V12.sql`: 54 tablas y 79 claves foráneas. El archivo fuente incluye solamente definiciones, índices y comentarios; **no contiene sentencias `INSERT` ni un seed ejecutable**. Actualmente tampoco se proporciona otro archivo de datos de prueba. El bloque SQL de este documento es una plantilla para que cada desarrollador cree un archivo local; no afirma que ese archivo ya exista.
+La fuente de verdad estructural es `database/01_esquema_shopify.sql` más `database/migrations/V2–V19.sql`: 59 tablas y 86 claves foráneas. El archivo fuente incluye solamente definiciones, índices y comentarios; **no contiene sentencias `INSERT` ni un seed ejecutable**. Actualmente tampoco se proporciona otro archivo de datos de prueba. El bloque SQL de este documento es una plantilla para que cada desarrollador cree un archivo local; no afirma que ese archivo ya exista.
 
 ## Mínimos para demostrar el sistema
 
@@ -19,7 +19,7 @@ Como mínimo funcional se recomienda reunir los siguientes escenarios:
 7. **Envío:** un envío entregado con las dos líneas del pedido y eventos de seguimiento ordenados cronológicamente.
 8. **Estados alternativos:** para una demostración más completa, agregar un segundo pedido pendiente y un carrito abandonado. Esto evita presentar únicamente el camino exitoso.
 
-El ejemplo SQL incluido más adelante implementa el núcleo de los escenarios 1 a 7. No pretende poblar las 54 tablas ni sustituye los datos adicionales sugeridos para seguridad, colecciones, reseñas y listas de deseos.
+El ejemplo SQL incluido más adelante implementa el núcleo de los escenarios 1 a 7. No pretende poblar las 58 tablas ni sustituye los datos adicionales sugeridos para seguridad, colecciones, reseñas y listas de deseos.
 
 ## Cantidades sugeridas
 
@@ -74,7 +74,7 @@ Las cantidades son una guía para una demostración pequeña, no una obligación
 
 ## Orden de inserción y dependencias
 
-El siguiente orden respeta las 79 claves foráneas. Las tablas de una misma etapa pueden cargarse en cualquier orden si no se referencian entre sí. Aunque `metacampos` y la pareja `entidad`/`entidad_id` de `registros_auditoria` no tienen FK hacia las entidades citadas, se dejan al final para mantener también su coherencia lógica.
+El siguiente orden respeta las 86 claves foráneas. Las tablas de una misma etapa pueden cargarse en cualquier orden si no se referencian entre sí. Aunque `metacampos` y la pareja `entidad`/`entidad_id` de `registros_auditoria` no tienen FK hacia las entidades citadas, se dejan al final para mantener también su coherencia lógica.
 
 | Etapa | Tablas | Dependencias ya resueltas |
 |---:|---|---|
@@ -128,7 +128,12 @@ En PowerShell, desde la raíz del proyecto, se puede crear una base desechable y
 ```powershell
 createdb -U postgres shopify_db_demo
 psql -U postgres -d shopify_db_demo -v ON_ERROR_STOP=1 -f database/01_esquema_shopify.sql
+Get-ChildItem database/migrations/V*.sql | Sort-Object Name | ForEach-Object {
+  psql -U postgres -d shopify_db_demo -v ON_ERROR_STOP=1 -f $_.FullName
+}
 ```
+
+En el backend, Flyway aplica ese mismo orden al arrancar (V1 del classpath + `filesystem:../shopify_db/database/migrations`). La migración repetible `R__roles_base.sql` inserta los roles del RBAC (`super_admin`, `admin`, `operador`, `cliente`); es dato de referencia, no seed de demostración.
 
 El comentario final de la base de datos utiliza `current_database()`, por lo que se aplica correctamente tanto a `shopify_db_demo` como a cualquier otro nombre de base. El comando presupone que PostgreSQL está instalado, que `createdb` y `psql` están en `PATH` y que el usuario tiene permiso para crear la base. La contraseña debe proporcionarse mediante el mecanismo seguro configurado en PostgreSQL, no escribirse en el script.
 
@@ -144,11 +149,11 @@ FROM information_schema.table_constraints
 WHERE table_schema = 'public' AND constraint_type = 'FOREIGN KEY';
 ```
 
-Los resultados esperados para este esquema, sin objetos adicionales en `public`, son `54` y `79`.
+Los resultados esperados para este esquema, sin objetos adicionales en `public`, son `59` y `86`.
 
 ## Crear y ejecutar un seed local
 
-1. Copiar el bloque siguiente en un archivo local creado por el desarrollador, por ejemplo `seed_demo.local.sql`. **Ese archivo no forma parte de la entrega y no existe hasta que alguien lo cree.** El bloque es compatible con las migraciones V2–V12: las columnas nuevas usan sus DEFAULT y los inserts respetan los UNIQUE/NOT NULL añadidos.
+1. Copiar el bloque siguiente en un archivo local creado por el desarrollador, por ejemplo `seed_demo.local.sql`. **Ese archivo no forma parte de la entrega y no existe hasta que alguien lo cree.** El bloque es compatible con las migraciones V2–V19: las columnas nuevas usan sus DEFAULT y los inserts respetan los UNIQUE/NOT NULL añadidos.
 2. Guardarlo en UTF-8. El bloque usa `\gset`, una metainstrucción de `psql`, para conservar los identificadores generados sin fijar manualmente los valores de las secuencias; debe ejecutarse con `psql`, no pegarse sin cambios en un cliente SQL que no reconozca esa instrucción.
 3. Ejecutarlo una vez sobre la base vacía:
 

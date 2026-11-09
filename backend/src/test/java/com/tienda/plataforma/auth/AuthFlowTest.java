@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 
 /** Flujo auth punta a punta a nivel servicio (diagrama 04). Rollback al final. */
 @SpringBootTest
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 @Transactional
 class AuthFlowTest {
 

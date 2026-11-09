@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.tienda.plataforma.auth.entity.Usuario;
 import com.tienda.plataforma.auth.repository.UsuarioRepository;
+import com.tienda.plataforma.shared.exception.ConflictoException;
+import com.tienda.plataforma.shared.exception.NoEncontradoException;
 import com.tienda.plataforma.platform.facturacion.entity.Suscripcion;
 import com.tienda.plataforma.platform.facturacion.repository.SuscripcionRepository;
 import com.tienda.plataforma.catalogo.entity.Producto;
@@ -40,7 +42,7 @@ import com.tienda.plataforma.venta.service.PedidoService;
 
 /** V17: el contacto del checkout se copia al pedido; sin contacto queda NULL. Rollback al final. */
 @SpringBootTest
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 @Transactional
 class PedidoContactoTest {
 
@@ -79,7 +81,7 @@ class PedidoContactoTest {
 		assertEquals("999888777", checkout.telefonoContacto());
 		assertEquals("Dejar en puerta", checkout.notasCliente());
 
-		PedidoResponse pedido = pedidos.confirmar(ctx.usuarioId(), checkout.id());
+		PedidoResponse pedido = pedidos.confirmar(ctx.usuarioId(), ctx.tiendaId(), checkout.id());
 		assertEquals("cli@example.com", pedido.emailContacto());
 		assertEquals("999888777", pedido.telefonoContacto());
 		assertEquals("Dejar en puerta", pedido.notasCliente());
@@ -91,13 +93,59 @@ class PedidoContactoTest {
 		var req = new CrearCheckoutRequest(ctx.carritoToken(), ctx.direccionId(), ctx.direccionId(),
 				ctx.metodoId(), null);
 		CheckoutResponse checkout = pedidos.crearCheckout(ctx.usuarioId(), ctx.slug(), req);
-		PedidoResponse pedido = pedidos.confirmar(ctx.usuarioId(), checkout.id());
+		PedidoResponse pedido = pedidos.confirmar(ctx.usuarioId(), ctx.tiendaId(), checkout.id());
 		assertNull(pedido.emailContacto());
 		assertNull(pedido.telefonoContacto());
 		assertNull(pedido.notasCliente());
 	}
 
-	private record Contexto(Long usuarioId, String slug, String carritoToken, Long direccionId, Long metodoId) {
+	@Test
+	void noConfirmaCheckoutConTenantDistinto() {
+		Contexto ctx = fixtures("pt-");
+		var req = new CrearCheckoutRequest(ctx.carritoToken(), ctx.direccionId(), ctx.direccionId(),
+				ctx.metodoId(), null);
+		CheckoutResponse checkout = pedidos.crearCheckout(ctx.usuarioId(), ctx.slug(), req);
+
+		Tienda otra = new Tienda();
+		otra.setNombre("otra tienda " + UUID.randomUUID());
+		otra.setSlug("otra-" + UUID.randomUUID());
+		otra.setActiva(true);
+		tiendas.save(otra);
+
+		assertThrows(NoEncontradoException.class,
+				() -> pedidos.confirmar(ctx.usuarioId(), otra.getId(), checkout.id()));
+	}
+
+	@Test
+	void noConfirmaCheckoutSiCarritoYaNoPerteneceAlCliente() {
+		Contexto ctx = fixtures("po-");
+		var req = new CrearCheckoutRequest(ctx.carritoToken(), ctx.direccionId(), ctx.direccionId(),
+				ctx.metodoId(), null);
+		CheckoutResponse checkout = pedidos.crearCheckout(ctx.usuarioId(), ctx.slug(), req);
+		Carrito carrito = carritos.findById(ctx.carritoId()).orElseThrow();
+		carrito.setCliente(null);
+		carritos.save(carrito);
+
+		assertThrows(NoEncontradoException.class,
+				() -> pedidos.confirmar(ctx.usuarioId(), ctx.tiendaId(), checkout.id()));
+	}
+
+	@Test
+	void noConfirmaCheckoutDeTiendaCongelada() {
+		Contexto ctx = fixtures("pf-");
+		var req = new CrearCheckoutRequest(ctx.carritoToken(), ctx.direccionId(), ctx.direccionId(),
+				ctx.metodoId(), null);
+		CheckoutResponse checkout = pedidos.crearCheckout(ctx.usuarioId(), ctx.slug(), req);
+		Tienda tienda = tiendas.findById(ctx.tiendaId()).orElseThrow();
+		tienda.setActiva(false);
+		tiendas.save(tienda);
+
+		assertThrows(ConflictoException.class,
+				() -> pedidos.confirmar(ctx.usuarioId(), ctx.tiendaId(), checkout.id()));
+	}
+
+	private record Contexto(Long usuarioId, Long tiendaId, Long carritoId, String slug,
+			String carritoToken, Long direccionId, Long metodoId) {
 	}
 
 	private Contexto fixtures(String prefijo) {
@@ -179,7 +227,7 @@ class PedidoContactoTest {
 		suscripcion.setPeriodoFin(java.time.Instant.now().plusSeconds(30 * 24 * 60 * 60));
 		suscripciones.save(suscripcion);
 
-		return new Contexto(usuario.getId(), tienda.getSlug(), carrito.getToken(),
+		return new Contexto(usuario.getId(), tienda.getId(), carrito.getId(), tienda.getSlug(), carrito.getToken(),
 				direccion.getId(), metodo.getId());
 	}
 }

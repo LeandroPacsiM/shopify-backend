@@ -17,10 +17,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.tienda.plataforma.auth.entity.Usuario;
@@ -35,6 +33,8 @@ import com.tienda.plataforma.inventario.entity.Ubicacion;
 import com.tienda.plataforma.inventario.repository.ArticuloInventarioRepository;
 import com.tienda.plataforma.inventario.repository.NivelInventarioRepository;
 import com.tienda.plataforma.inventario.repository.UbicacionRepository;
+import com.tienda.plataforma.platform.facturacion.entity.Suscripcion;
+import com.tienda.plataforma.platform.facturacion.repository.SuscripcionRepository;
 import com.tienda.plataforma.shared.security.JwtService;
 import com.tienda.plataforma.tenants.entity.Cliente;
 import com.tienda.plataforma.tenants.entity.Direccion;
@@ -57,7 +57,7 @@ import jakarta.persistence.EntityManager;
 /** Doble confirmación concurrente crea un solo pedido (suite AGENTS.md). */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 class ConfirmacionConcurrenteTest {
 
 	@Autowired
@@ -93,6 +93,8 @@ class ConfirmacionConcurrenteTest {
 	@Autowired
 	PedidoRepository pedidos;
 	@Autowired
+	SuscripcionRepository suscripciones;
+	@Autowired
 	EntityManager entityManager;
 
 	String jwt;
@@ -109,6 +111,12 @@ class ConfirmacionConcurrenteTest {
 		tienda.setActiva(true);
 		tiendas.save(tienda);
 		slug = tienda.getSlug();
+		Suscripcion suscripcion = new Suscripcion();
+		suscripcion.setTienda(tienda);
+		suscripcion.setPlan(Suscripcion.MENSUAL);
+		suscripcion.setEstado(Suscripcion.ACTIVA);
+		suscripcion.setPeriodoFin(java.time.Instant.now().plusSeconds(30L * 24 * 60 * 60));
+		suscripciones.save(suscripcion);
 
 		Usuario usuario = new Usuario();
 		usuario.setEmail("c-" + tag + "@example.com");

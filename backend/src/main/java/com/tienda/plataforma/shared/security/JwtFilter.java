@@ -29,8 +29,11 @@ public class JwtFilter extends OncePerRequestFilter {
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
 		String ruta = request.getRequestURI();
-		return ruta.startsWith("/auth/") || ruta.startsWith("/api/webhooks/")
-				|| ruta.startsWith("/swagger-ui") || ruta.startsWith("/v3/api-docs");
+		if (ruta.startsWith("/api/webhooks/") || ruta.startsWith("/swagger-ui")
+				|| ruta.startsWith("/v3/api-docs")) {
+			return true;
+		}
+		return ruta.startsWith("/auth/") && !ruta.startsWith("/auth/tiendas");
 	}
 
 	@Override

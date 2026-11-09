@@ -27,6 +27,7 @@ import com.tienda.plataforma.shared.exception.ConflictoException;
 import com.tienda.plataforma.shared.exception.NoAutorizadoException;
 import com.tienda.plataforma.shared.exception.NoEncontradoException;
 import com.tienda.plataforma.shared.security.FirmaStripe;
+import com.tienda.plataforma.shared.security.StripeTestKeys;
 import com.tienda.plataforma.tenants.entity.Tienda;
 import com.tienda.plataforma.tenants.repository.TiendaRepository;
 
@@ -34,8 +35,8 @@ import com.tienda.plataforma.tenants.repository.TiendaRepository;
  * Facturación de plataforma (RF-BILL): la tienda paga por el software con
  * NUESTRAS llaves; lo que cobra a sus clientes va por SU pasarela (V10).
  * Sin suscripción vigente no hay checkout nuevo (tienda congelada).
- * El cobro Stripe (Subscriptions API) llega en V19; aquí el modelo, los
- * estados y el webhook que activa/renueva o congela.
+ * Stripe Subscriptions solo opera con llaves de prueba; el modo real permanece
+ * bloqueado. El webhook activa/renueva o congela la tienda.
  */
 @Service
 public class FacturacionService {
@@ -70,6 +71,9 @@ public class FacturacionService {
 		this.tiendas = tiendas;
 		this.whsec = whsec == null ? "" : whsec.trim();
 		this.llave = llave == null ? "" : llave.trim();
+		if (!this.llave.isEmpty() && !StripeTestKeys.esClaveApiSecretaTest(this.llave)) {
+			throw new IllegalStateException("stripe.platform-key solo admite llaves de prueba");
+		}
 		this.precioMensual = precioMensual == null ? "" : precioMensual.trim();
 		this.precioAnual = precioAnual == null ? "" : precioAnual.trim();
 		String base = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
@@ -80,10 +84,14 @@ public class FacturacionService {
 	public SuscripcionResponse ver(Long tiendaId) {
 		Suscripcion s = suscripciones.findByTiendaId(tiendaId)
 				.orElseThrow(() -> new NoEncontradoException("suscripcion"));
-		return responder(s);
+		return responder(s, secretoPendiente(s));
 	}
 
-	/** Crea o cambia el plan (queda pendiente hasta el primer pago). */
+	/**
+	 * Crea o cambia el plan (queda pendiente hasta el primer pago). Devuelve
+	 * el `client_secret` del pago inicial para completarlo en el frontend;
+	 * el webhook `invoice.payment_succeeded` activa la suscripción.
+	 */
 	@Transactional
 	public SuscripcionResponse suscribir(Long tiendaId, String plan) {
 		if (!Suscripcion.MENSUAL.equals(plan) && !Suscripcion.ANUAL.equals(plan)) {
@@ -99,22 +107,24 @@ public class FacturacionService {
 		s.setPlan(plan);
 		s.setEstado(Suscripcion.PENDIENTE);
 		suscripciones.save(s);
+		String secreto = null;
 		if (cobroConfigurado()) {
-			crearEnStripe(s);
+			secreto = crearEnStripe(s);
 			suscripciones.save(s);
 		} else {
 			LOG.warn("facturación sin configurar para tienda {}", tiendaId);
 		}
-		return responder(s);
+		return responder(s, secreto);
 	}
 
 	@Transactional
 	public SuscripcionResponse cancelar(Long tiendaId) {
 		Suscripcion s = suscripciones.findByTiendaId(tiendaId)
 				.orElseThrow(() -> new NoEncontradoException("suscripcion"));
+		cancelarEnStripe(s);
 		s.setEstado(Suscripcion.CANCELADA);
 		suscripciones.save(s);
-		return responder(s);
+		return responder(s, null);
 	}
 
 	/**
@@ -147,7 +157,7 @@ public class FacturacionService {
 	}
 
 	/**
-	 * Evento crudo de Stripe (V19): `invoice.payment_succeeded` renueva,
+	 * Evento crudo de Stripe: `invoice.payment_succeeded` renueva,
 	 * `customer.subscription.deleted` cancela y congela; resto → 200.
 	 */
 	@Transactional
@@ -234,11 +244,15 @@ public class FacturacionService {
 	}
 
 	private boolean cobroConfigurado() {
-		return !llave.isEmpty() && !precioMensual.isEmpty() && !precioAnual.isEmpty();
+		return StripeTestKeys.esClaveApiSecretaTest(llave)
+				&& !precioMensual.isEmpty() && !precioAnual.isEmpty();
 	}
 
 	/** Crea customer + subscription con el price del plan (llaves de plataforma). */
-	private void crearEnStripe(Suscripcion s) {
+	private String crearEnStripe(Suscripcion s) {
+		if (!StripeTestKeys.esClaveApiSecretaTest(llave)) {
+			throw new IllegalStateException("stripe.platform-key solo admite llaves de prueba");
+		}
 		String precio = Suscripcion.ANUAL.equals(s.getPlan()) ? precioAnual : precioMensual;
 		String intervalo = Suscripcion.ANUAL.equals(s.getPlan()) ? "year" : "month";
 		try {
@@ -252,24 +266,102 @@ public class FacturacionService {
 		} catch (Exception e) {
 			throw new IllegalStateException("stripe no disponible", e);
 		}
+		String baseClave = "facturacion-" + s.getId() + "-" + s.getPlan();
 		String customer = idDe(post("/v1/customers",
-				"metadata[tienda]=" + URLEncoder.encode(s.getTienda().getSlug(), StandardCharsets.UTF_8)));
-		String subscription = idDe(post("/v1/subscriptions",
+				"metadata[tienda]=" + URLEncoder.encode(s.getTienda().getSlug(), StandardCharsets.UTF_8),
+				"facturacion-" + s.getId() + "-customer"));
+		String respuestaSub = post("/v1/subscriptions",
 				"customer=" + URLEncoder.encode(customer, StandardCharsets.UTF_8)
 						+ "&items[0][price]=" + URLEncoder.encode(precio, StandardCharsets.UTF_8)
 						+ "&payment_behavior=default_incomplete"
-						+ "&metadata[tienda]=" + URLEncoder.encode(s.getTienda().getSlug(), StandardCharsets.UTF_8)));
+						+ "&metadata[tienda]=" + URLEncoder.encode(s.getTienda().getSlug(), StandardCharsets.UTF_8)
+						+ "&expand[0]=" + URLEncoder.encode("latest_invoice.payment_intent",
+								StandardCharsets.UTF_8),
+				baseClave + "-subscription");
 		s.setStripeCustomerId(customer);
-		s.setStripeSubscriptionId(subscription);
+		s.setStripeSubscriptionId(idDe(respuestaSub));
+		try {
+			return secretoDesdeSuscripcion(json.readTree(respuestaSub));
+		} catch (Exception e) {
+			LOG.warn("suscripción sin secreto de pago inicial para tienda {}", s.getTienda().getId());
+			return null;
+		}
 	}
 
-	private String post(String ruta, String cuerpo) {
+	/**
+	 * Secreto vigente del pago inicial cuando la suscripción sigue pendiente;
+	 * `null` si ya está activa/cancelada, sin Stripe o sin pago requerido.
+	 * No rompe la lectura si Stripe falla.
+	 */
+	private String secretoPendiente(Suscripcion s) {
+		if (!Suscripcion.PENDIENTE.equals(s.getEstado())
+				|| s.getStripeSubscriptionId() == null || s.getStripeSubscriptionId().isBlank()
+				|| !cobroConfigurado()) {
+			return null;
+		}
+		try {
+			String cuerpo = get("/v1/subscriptions/"
+					+ URLEncoder.encode(s.getStripeSubscriptionId(), StandardCharsets.UTF_8)
+					+ "?expand%5B%5D=" + URLEncoder.encode("latest_invoice.payment_intent",
+							StandardCharsets.UTF_8));
+			return secretoDesdeSuscripcion(json.readTree(cuerpo));
+		} catch (Exception e) {
+			LOG.warn("sin secreto de pago inicial para suscripción {}", s.getId());
+			return null;
+		}
+	}
+
+	private String secretoDesdeSuscripcion(JsonNode sub) {
+		JsonNode secreto = sub.path("latest_invoice").path("payment_intent").path("client_secret");
+		return secreto.isTextual() ? secreto.asText() : null;
+	}
+
+	/**
+	 * Cancela la suscripción en Stripe (solo test). Sin `stripeSubscriptionId`
+	 * o sin configuración no hay nada externo que cancelar. Si Stripe falla,
+	 * se propaga y la transacción local revierte: reintentar es seguro.
+	 * La congelación la completa el webhook `customer.subscription.deleted`.
+	 */
+	private void cancelarEnStripe(Suscripcion s) {
+		if (s.getStripeSubscriptionId() == null || s.getStripeSubscriptionId().isBlank()
+				|| !cobroConfigurado()) {
+			return;
+		}
+		if (!StripeTestKeys.esClaveApiSecretaTest(llave)) {
+			throw new IllegalStateException("stripe.platform-key solo admite llaves de prueba");
+		}
+		try {
+			HttpResponse<String> respuesta = http.send(
+					HttpRequest.newBuilder()
+							.uri(URI.create(baseUrl + "/v1/subscriptions/"
+									+ URLEncoder.encode(s.getStripeSubscriptionId(), StandardCharsets.UTF_8)))
+							.timeout(Duration.ofSeconds(15))
+							.header("Authorization", "Bearer " + llave)
+							.header("Idempotency-Key", "facturacion-" + s.getId() + "-cancel")
+							.DELETE()
+							.build(),
+					HttpResponse.BodyHandlers.ofString());
+			if (respuesta.statusCode() == 404) {
+				return;
+			}
+			if (respuesta.statusCode() < 200 || respuesta.statusCode() >= 300) {
+				throw new IllegalStateException("stripe " + respuesta.statusCode());
+			}
+		} catch (IllegalStateException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new IllegalStateException("stripe no disponible", e);
+		}
+	}
+
+	private String post(String ruta, String cuerpo, String idempotencia) {
 		try {
 			HttpResponse<String> respuesta = http.send(
 					HttpRequest.newBuilder()
 							.uri(URI.create(baseUrl + ruta))
 							.timeout(Duration.ofSeconds(15))
 							.header("Authorization", "Bearer " + llave)
+							.header("Idempotency-Key", idempotencia)
 							.header("Content-Type", "application/x-www-form-urlencoded")
 							.POST(HttpRequest.BodyPublishers.ofString(cuerpo))
 							.build(),
@@ -320,7 +412,7 @@ public class FacturacionService {
 		}
 	}
 
-	private SuscripcionResponse responder(Suscripcion s) {
-		return new SuscripcionResponse(s.getPlan(), s.getEstado(), s.getPeriodoFin());
+	private SuscripcionResponse responder(Suscripcion s, String clientSecret) {
+		return new SuscripcionResponse(s.getPlan(), s.getEstado(), s.getPeriodoFin(), clientSecret);
 	}
 }

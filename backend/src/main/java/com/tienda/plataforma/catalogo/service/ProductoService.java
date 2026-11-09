@@ -14,6 +14,7 @@ import com.tienda.plataforma.catalogo.entity.Producto;
 import com.tienda.plataforma.catalogo.entity.ProductoVariante;
 import com.tienda.plataforma.catalogo.repository.ProductoRepository;
 import com.tienda.plataforma.catalogo.repository.ProductoVarianteRepository;
+import com.tienda.plataforma.shared.auditoria.AuditoriaService;
 import com.tienda.plataforma.shared.exception.ConflictoException;
 import com.tienda.plataforma.shared.exception.NoEncontradoException;
 import com.tienda.plataforma.tenants.entity.Tienda;
@@ -26,12 +27,14 @@ public class ProductoService {
 	private final ProductoRepository productos;
 	private final ProductoVarianteRepository variantes;
 	private final TiendaRepository tiendas;
+	private final AuditoriaService auditoria;
 
 	public ProductoService(ProductoRepository productos, ProductoVarianteRepository variantes,
-			TiendaRepository tiendas) {
+			TiendaRepository tiendas, AuditoriaService auditoria) {
 		this.productos = productos;
 		this.variantes = variantes;
 		this.tiendas = tiendas;
+		this.auditoria = auditoria;
 	}
 
 	@Transactional(readOnly = true)
@@ -55,6 +58,7 @@ public class ProductoService {
 		producto.setCreadoEn(Instant.now());
 		producto.setActualizadoEn(Instant.now());
 		productos.save(producto);
+		auditoria.registrar("productos", producto.getId(), "producto.crear");
 		return ProductoResponse.de(producto);
 	}
 
@@ -65,6 +69,7 @@ public class ProductoService {
 		producto.setPublicadoEn(Instant.now());
 		producto.setActualizadoEn(Instant.now());
 		productos.save(producto);
+		auditoria.registrar("productos", producto.getId(), "producto.publicar");
 		return ProductoResponse.de(producto);
 	}
 
@@ -74,6 +79,7 @@ public class ProductoService {
 		producto.setEstado(Producto.ARCHIVADO);
 		producto.setActualizadoEn(Instant.now());
 		productos.save(producto);
+		auditoria.registrar("productos", producto.getId(), "producto.archivar");
 		return ProductoResponse.de(producto);
 	}
 
@@ -98,6 +104,7 @@ public class ProductoService {
 		variante.setActivo(true);
 		variante.setCreadoEn(Instant.now());
 		variantes.save(variante);
+		auditoria.registrar("producto_variantes", variante.getId(), "producto.crear_variante");
 		return VarianteResponse.de(variante);
 	}
 

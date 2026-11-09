@@ -50,24 +50,28 @@ public class CarritoService {
 	public CarritoResponse obtenerOCrear(String slug, Long clienteId, String token) {
 		Tienda tienda = tiendas.findBySlug(slug)
 				.orElseThrow(() -> new NoEncontradoException("tienda"));
+		Cliente cliente = clienteId == null ? null : clientes.findById(clienteId)
+				.orElseThrow(() -> new NoEncontradoException("cliente"));
+		if (cliente != null && !cliente.getTienda().getId().equals(tienda.getId())) {
+			throw new NoEncontradoException("carrito");
+		}
+
 		Carrito carrito = null;
 		if (token != null) {
 			carrito = carritos.findByToken(token).orElse(null);
 		}
-		if (carrito == null && clienteId != null) {
-			carrito = carritos.findByClienteId(clienteId).stream()
+		if (carrito != null) {
+			validarTenantYTitular(carrito, tienda, cliente);
+		}
+		if (carrito == null && cliente != null) {
+			carrito = carritos.findByClienteId(cliente.getId()).stream()
 					.filter(c -> c.getTienda().getId().equals(tienda.getId())
 							&& Carrito.ACTIVO.equals(c.getEstado()))
 					.findFirst().orElse(null);
 		}
 		if (carrito == null) {
-			carrito = nuevoCarrito(tienda, clienteId);
-		} else if (clienteId != null && carrito.getCliente() == null) {
-			Cliente cliente = clientes.findById(clienteId)
-					.orElseThrow(() -> new NoEncontradoException("cliente"));
-			if (!cliente.getTienda().getId().equals(tienda.getId())) {
-				throw new ConflictoException("cliente de otra tienda");
-			}
+			carrito = nuevoCarrito(tienda, cliente);
+		} else if (cliente != null && carrito.getCliente() == null) {
 			carrito.setCliente(cliente);
 			carritos.save(carrito);
 		}
@@ -75,16 +79,20 @@ public class CarritoService {
 	}
 
 	@Transactional
-	public CarritoResponse agregarLinea(String slug, String token, AgregarLineaRequest req) {
-		Carrito carrito = carritos.findByToken(token)
-				.orElseThrow(() -> new NoEncontradoException("carrito"));
+	public CarritoResponse agregarLinea(String slug, String token, Long clienteId, AgregarLineaRequest req) {
 		Tienda tienda = tiendas.findBySlug(slug)
 				.orElseThrow(() -> new NoEncontradoException("tienda"));
-		if (!carrito.getTienda().getId().equals(tienda.getId())) {
-			throw new NoEncontradoException("carrito");
-		}
+		Carrito carrito = carritos.findByToken(token)
+				.orElseThrow(() -> new NoEncontradoException("carrito"));
+		Cliente cliente = clienteId == null ? null : clientes.findById(clienteId)
+				.orElseThrow(() -> new NoEncontradoException("cliente"));
+		validarTenantYTitular(carrito, tienda, cliente);
 		if (!Carrito.ACTIVO.equals(carrito.getEstado())) {
 			throw new ConflictoException("carrito no activo");
+		}
+		if (cliente != null && carrito.getCliente() == null) {
+			carrito.setCliente(cliente);
+			carritos.save(carrito);
 		}
 		ProductoVariante variante = variantes.findById(req.varianteId())
 				.orElseThrow(() -> new NoEncontradoException("variante"));
@@ -112,7 +120,12 @@ public class CarritoService {
 	public CarritoResponse ver(Long carritoId) {
 		Carrito carrito = carritos.findById(carritoId)
 				.orElseThrow(() -> new NoEncontradoException("carrito"));
-		List<LineaResponse> lineas = items.findByCarritoId(carritoId).stream()
+		List<CarritoItem> itemsCarrito = items.findByCarritoId(carritoId);
+		if (itemsCarrito.stream().anyMatch(l -> !l.getVariante().getProducto().getTienda().getId()
+				.equals(carrito.getTienda().getId()))) {
+			throw new NoEncontradoException("carrito");
+		}
+		List<LineaResponse> lineas = itemsCarrito.stream()
 				.map(l -> new LineaResponse(
 						l.getVariante().getId(),
 						l.getVariante().getSku(),
@@ -126,15 +139,10 @@ public class CarritoService {
 		return new CarritoResponse(carrito.getId(), carrito.getToken(), carrito.getEstado(), lineas, subtotal);
 	}
 
-	private Carrito nuevoCarrito(Tienda tienda, Long clienteId) {
+	private Carrito nuevoCarrito(Tienda tienda, Cliente cliente) {
 		Carrito carrito = new Carrito();
 		carrito.setTienda(tienda);
-		if (clienteId != null) {
-			Cliente cliente = clientes.findById(clienteId)
-					.orElseThrow(() -> new NoEncontradoException("cliente"));
-			if (!cliente.getTienda().getId().equals(tienda.getId())) {
-				throw new ConflictoException("cliente de otra tienda");
-			}
+		if (cliente != null) {
 			carrito.setCliente(cliente);
 		}
 		byte[] bytes = new byte[24];
@@ -146,5 +154,18 @@ public class CarritoService {
 		carrito.setActualizadoEn(Instant.now());
 		carrito.setExpiraEn(Instant.now().plusSeconds(7 * 24 * 60 * 60));
 		return carritos.save(carrito);
+	}
+
+	private void validarTenantYTitular(Carrito carrito, Tienda tienda, Cliente cliente) {
+		if (!carrito.getTienda().getId().equals(tienda.getId())
+				|| (cliente != null && !cliente.getTienda().getId().equals(tienda.getId()))
+				|| (carrito.getCliente() != null
+						&& !carrito.getCliente().getTienda().getId().equals(tienda.getId()))) {
+			throw new NoEncontradoException("carrito");
+		}
+		if (cliente != null && carrito.getCliente() != null
+				&& !carrito.getCliente().getId().equals(cliente.getId())) {
+			throw new NoEncontradoException("carrito");
+		}
 	}
 }

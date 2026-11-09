@@ -33,6 +33,8 @@ import com.tienda.plataforma.inventario.entity.Ubicacion;
 import com.tienda.plataforma.inventario.repository.ArticuloInventarioRepository;
 import com.tienda.plataforma.inventario.repository.NivelInventarioRepository;
 import com.tienda.plataforma.inventario.repository.UbicacionRepository;
+import com.tienda.plataforma.platform.facturacion.entity.Suscripcion;
+import com.tienda.plataforma.platform.facturacion.repository.SuscripcionRepository;
 import com.tienda.plataforma.shared.security.JwtService;
 import com.tienda.plataforma.tenants.entity.Cliente;
 import com.tienda.plataforma.tenants.entity.Direccion;
@@ -56,7 +58,7 @@ import com.tienda.plataforma.venta.repository.PedidoRepository;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 class SobreventaTest {
 
 	@Autowired
@@ -91,6 +93,8 @@ class SobreventaTest {
 	CheckoutSesionRepository checkouts;
 	@Autowired
 	PedidoRepository pedidos;
+	@Autowired
+	SuscripcionRepository suscripciones;
 
 	String jwt;
 	String slug;
@@ -103,6 +107,12 @@ class SobreventaTest {
 		String tag = UUID.randomUUID().toString().substring(0, 8);
 		Tienda tienda = nuevaTienda(tag);
 		slug = tienda.getSlug();
+		Suscripcion suscripcion = new Suscripcion();
+		suscripcion.setTienda(tienda);
+		suscripcion.setPlan(Suscripcion.MENSUAL);
+		suscripcion.setEstado(Suscripcion.ACTIVA);
+		suscripcion.setPeriodoFin(java.time.Instant.now().plusSeconds(30L * 24 * 60 * 60));
+		suscripciones.save(suscripcion);
 		Usuario usuario = nuevoUsuario(tag);
 		Cliente cliente = nuevoCliente(usuario, tienda);
 		ProductoVariante variante = nuevoProducto(tag, tienda, "60.00");

@@ -40,11 +40,14 @@ import com.tienda.plataforma.auth.repository.UsuarioRolRepository;
 import com.tienda.plataforma.shared.exception.ConflictoException;
 import com.tienda.plataforma.shared.exception.NoEncontradoException;
 import com.tienda.plataforma.shared.exception.NoAutorizadoException;
+import com.tienda.plataforma.shared.exception.ProhibidoException;
+import com.tienda.plataforma.shared.auditoria.AuditoriaService;
 import com.tienda.plataforma.shared.mail.MailService;
 import com.tienda.plataforma.shared.security.CryptoService;
 import com.tienda.plataforma.shared.security.JwtService;
 import com.tienda.plataforma.tenants.entity.Cliente;
 import com.tienda.plataforma.tenants.entity.Tienda;
+import com.tienda.plataforma.tenants.entity.TiendaUsuario;
 import com.tienda.plataforma.tenants.repository.ClienteRepository;
 import com.tienda.plataforma.tenants.repository.TiendaRepository;
 import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
@@ -81,6 +84,7 @@ public class AuthService {
 	private final CryptoService cryptoService;
 	private final JwtService jwtService;
 	private final EntityManager entityManager;
+	private final AuditoriaService auditoria;
 	private final SecureRandom aleatorio = new SecureRandom();
 
 	public AuthService(UsuarioRepository usuarios, UsuarioRolRepository usuarioRoles,
@@ -89,7 +93,8 @@ public class AuthService {
 			CodigoRecuperacionRepository codigos, SesionRepository sesiones,
 			TokenCuentaRepository tokens, MailService correo,
 			PasswordEncoder passwordEncoder, TotpService totpService,
-			CryptoService cryptoService, JwtService jwtService, EntityManager entityManager) {
+			CryptoService cryptoService, JwtService jwtService, EntityManager entityManager,
+			AuditoriaService auditoria) {
 		this.usuarios = usuarios;
 		this.usuarioRoles = usuarioRoles;
 		this.clientes = clientes;
@@ -104,6 +109,7 @@ public class AuthService {
 		this.cryptoService = cryptoService;
 		this.jwtService = jwtService;
 		this.entityManager = entityManager;
+		this.auditoria = auditoria;
 	}
 
 	@Transactional
@@ -150,7 +156,8 @@ public class AuthService {
 		return new RegistroResponse(usuario.getId(), email, true);
 	}
 
-	@Transactional
+	/** El 401 es esperado; no revertir el contador de intentos fallidos. */
+	@Transactional(noRollbackFor = NoAutorizadoException.class)
 	public String iniciarEnrolamiento(CredencialesRequest req) {
 		Usuario usuario = accesoPorPassword(req.email(), req.password());
 		if (Boolean.TRUE.equals(usuario.getTotpHabilitado())) {
@@ -164,7 +171,8 @@ public class AuthService {
 		return totpService.urlQr("plataforma-tiendas", usuario.getEmail(), secreto);
 	}
 
-	@Transactional
+	/** El 401 por password/TOTP inválido debe conservar el contador de lockout. */
+	@Transactional(noRollbackFor = NoAutorizadoException.class)
 	public TotpConfirmadoResponse confirmarEnrolamiento(ConfirmarTotpRequest req) {
 		Usuario usuario = accesoPorPassword(req.email(), req.password());
 		if (Boolean.TRUE.equals(usuario.getTotpHabilitado())) {
@@ -196,8 +204,8 @@ public class AuthService {
 		return new TotpConfirmadoResponse(true, planos);
 	}
 
-	/** Paso 1: password. Si OK y hay TOTP, el cliente debe llamar a verificarTotp. */
-	@Transactional
+	/** Paso 1: password. Persiste el contador aunque el intento responda 401. */
+	@Transactional(noRollbackFor = NoAutorizadoException.class)
 	public ChallengeResponse login(LoginRequest req) {
 		Usuario usuario = buscarVigente(req.email());
 		if (!passwordEncoder.matches(req.password(), usuario.getPasswordHash())) {
@@ -211,8 +219,8 @@ public class AuthService {
 		return new ChallengeResponse(true);
 	}
 
-	/** Paso 2: TOTP o backup code. Emite JWT + refresh en familia nueva. */
-	@Transactional
+	/** Paso 2: TOTP o backup code; persiste fallos y emite JWT + refresh si valida. */
+	@Transactional(noRollbackFor = NoAutorizadoException.class)
 	public SesionEmitida verificarTotpLogin(TotpLoginRequest req, String ip, String agente) {
 		Usuario usuario = buscarVigente(req.email());
 		if (!passwordEncoder.matches(req.password(), usuario.getPasswordHash())) {
@@ -242,8 +250,8 @@ public class AuthService {
 		return emitirSesion(usuario, UUID.randomUUID(), ip, agente);
 	}
 
-	/** Rota el refresh. Reusar uno rotado revoca la familia entera (posible robo). */
-	@Transactional
+	/** Reusar refresh revoca la familia; el 401 no debe revertir esa revocación. */
+	@Transactional(noRollbackFor = NoAutorizadoException.class)
 	public SesionEmitida refresh(String refreshPlano, String ip, String agente) {
 		Sesion sesion = sesiones.findByTokenHash(sha256(refreshPlano))
 				.orElseThrow(() -> new NoAutorizadoException("sesión inválida"));
@@ -252,6 +260,10 @@ public class AuthService {
 			throw new NoAutorizadoException("sesión inválida");
 		}
 		if (!sesion.vigente(Instant.now())) {
+			throw new NoAutorizadoException("sesión inválida");
+		}
+		if (!Boolean.TRUE.equals(sesion.getUsuario().getTotpHabilitado())) {
+			revocarFamilia(sesion.getFamiliaId(), "totp_deshabilitado");
 			throw new NoAutorizadoException("sesión inválida");
 		}
 		SesionEmitida nueva = emitirSesion(sesion.getUsuario(), sesion.getFamiliaId(), ip, agente);
@@ -387,23 +399,24 @@ public class AuthService {
 	}
 
 	/**
-	 * RF-AUTH-06: resetea el 2FA de un usuario. super_admin en cualquier tienda;
-	 * admin solo sobre usuarios vinculados a su tienda. Anula secreto y backup codes.
+	 * RF-AUTH-06: solo el admin de la tienda puede resetear el 2FA de un usuario
+	 * vinculado a ella. Anula secreto y backup codes.
 	 */
 	@Transactional
-	public void resetTotpPorAdmin(Long objetivoId, Long tiendaId, boolean esSuperAdmin) {
+	public void resetTotpPorAdmin(Long actorId, Long objetivoId, Long tiendaId) {
+		boolean actorEsAdmin = tiendaId != null && actorId != null
+				&& tiendaUsuarios.findByTiendaIdAndUsuarioId(tiendaId, actorId)
+						.map(v -> TiendaUsuario.ADMIN.equals(v.getRolTienda())).orElse(false);
+		if (!actorEsAdmin) {
+			throw new ProhibidoException("solo el admin de la tienda puede resetear 2FA");
+		}
 		Usuario objetivo = usuarios.findById(objetivoId)
 				.orElseThrow(() -> new NoEncontradoException("usuario"));
-		if (!esSuperAdmin) {
-			if (tiendaId == null) {
-				throw new com.tienda.plataforma.shared.exception.ProhibidoException("sin tienda");
-			}
-			boolean vinculado = tiendaUsuarios.findByTiendaIdAndUsuarioId(tiendaId, objetivoId).isPresent()
-					|| clientes.findByUsuarioId(objetivoId)
-							.map(c -> c.getTienda().getId().equals(tiendaId)).orElse(false);
-			if (!vinculado) {
-				throw new NoEncontradoException("usuario");
-			}
+		boolean vinculado = tiendaUsuarios.findByTiendaIdAndUsuarioId(tiendaId, objetivoId).isPresent()
+				|| clientes.findByUsuarioId(objetivoId)
+						.map(c -> c.getTienda().getId().equals(tiendaId)).orElse(false);
+		if (!vinculado) {
+			throw new NoEncontradoException("usuario");
 		}
 		objetivo.setTotpSecret(null);
 		objetivo.setTotpHabilitado(false);
@@ -415,6 +428,8 @@ public class AuthService {
 			fila.consumir(Instant.now());
 			codigos.save(fila);
 		});
+		revocarSesionesUsuario(objetivoId, "reset_totp");
+		auditoria.registrar("usuarios", objetivoId, "usuario.totp_reset");
 	}
 
 	private SesionEmitida emitirSesion(Usuario usuario, UUID familia, String ip, String agente) {
@@ -436,6 +451,17 @@ public class AuthService {
 		for (Sesion s : sesiones.findByFamiliaId(familia)) {
 			if (s.getRevocadoEn() == null) {
 				s.setRevocadoEn(Instant.now());
+				s.setMotivoRevocacion(motivo);
+				sesiones.save(s);
+			}
+		}
+	}
+
+	private void revocarSesionesUsuario(Long usuarioId, String motivo) {
+		Instant ahora = Instant.now();
+		for (Sesion s : sesiones.findByUsuarioId(usuarioId)) {
+			if (s.getRevocadoEn() == null) {
+				s.setRevocadoEn(ahora);
 				s.setMotivoRevocacion(motivo);
 				sesiones.save(s);
 			}

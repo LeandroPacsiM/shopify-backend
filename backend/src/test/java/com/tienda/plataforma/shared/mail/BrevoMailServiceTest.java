@@ -42,7 +42,7 @@ class BrevoMailServiceTest {
 	@Test
 	void enviaConFormaBrevo() {
 		var servicio = new BrevoMailService("clave-brevo", "tienda@example.com",
-				"http://127.0.0.1:" + stub.getAddress().getPort());
+				"http://127.0.0.1:" + stub.getAddress().getPort(), true);
 		assertDoesNotThrow(() -> servicio.enviar("dest@example.com", "Asunto", "<p>hola</p>"));
 
 		assertEquals("clave-brevo", ultimoAuth.get());
@@ -55,8 +55,17 @@ class BrevoMailServiceTest {
 	@Test
 	void sinLlaveModoLog() {
 		var servicio = new BrevoMailService("", "tienda@example.com",
-				"http://127.0.0.1:" + stub.getAddress().getPort());
+				"http://127.0.0.1:" + stub.getAddress().getPort(), true);
 		assertDoesNotThrow(() -> servicio.enviar("dest@example.com", "Asunto", "<p>hola</p>"));
+		assertNull(ultimoAuth.get());
+	}
+
+	@Test
+	void sinLlaveYLogProhibidoFallaCerrado() {
+		var servicio = new BrevoMailService("", "tienda@example.com",
+				"http://127.0.0.1:" + stub.getAddress().getPort(), false);
+		assertThrows(IllegalStateException.class,
+				() -> servicio.enviar("dest@example.com", "Asunto", "<p>codigo-secreto</p>"));
 		assertNull(ultimoAuth.get());
 	}
 }

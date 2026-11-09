@@ -32,7 +32,7 @@ import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
 /** RF-PAY-01: solo el admin registra credenciales; el secreto va cifrado y no vuelve. Rollback al final. */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 @Transactional
 class PasarelaCredencialTest {
 
@@ -107,6 +107,17 @@ class PasarelaCredencialTest {
 	}
 
 	@Test
+	void aceptaLlaveRestringidaDePrueba() throws Exception {
+		mvc.perform(post("/api/admin/pasarelas")
+				.header("Authorization", "Bearer " + jwtAdmin)
+				.header("X-Tienda-Slug", tienda.getSlug())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"codigo\":\"stripe\",\"clavePublica\":\"pk_test_x\","
+						+ "\"secreto\":\"rk_test_x\",\"modo\":\"test\"}"))
+				.andExpect(status().isOk());
+	}
+
+	@Test
 	void operadorNoRegistra() throws Exception {
 		mvc.perform(post("/api/admin/pasarelas")
 				.header("Authorization", "Bearer " + jwtOperador)
@@ -125,6 +136,35 @@ class PasarelaCredencialTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"codigo\":\"stripe\",\"clavePublica\":\"pk\",\"secreto\":\"sk\",\"modo\":\"oro\"}"))
 				.andExpect(status().isConflict());
+	}
+
+	@Test
+	void llavesStripeLiveSeRechazanAunqueModoDigaTest() throws Exception {
+		for (String cuerpo : List.of(
+				"{\"codigo\":\"stripe\",\"clavePublica\":\"pk_test_x\","
+						+ "\"secreto\":\"sk_live_x;whsec_y\",\"modo\":\"test\"}",
+				"{\"codigo\":\"stripe\",\"clavePublica\":\"pk_live_x\","
+						+ "\"secreto\":\"sk_test_x;whsec_y\",\"modo\":\"test\"}")) {
+			mvc.perform(post("/api/admin/pasarelas")
+					.header("Authorization", "Bearer " + jwtAdmin)
+					.header("X-Tienda-Slug", tienda.getSlug())
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(cuerpo))
+					.andExpect(status().isConflict());
+		}
+		assertTrue(credenciales.findByTiendaIdAndActivoTrue(tienda.getId()).isEmpty());
+	}
+
+	@Test
+	void modoVivoSeRechazaInclusoConLlavesDePrueba() throws Exception {
+		mvc.perform(post("/api/admin/pasarelas")
+				.header("Authorization", "Bearer " + jwtAdmin)
+				.header("X-Tienda-Slug", tienda.getSlug())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"codigo\":\"stripe\",\"clavePublica\":\"pk_test_x\","
+						+ "\"secreto\":\"sk_test_x;whsec_y\",\"modo\":\"vivo\"}"))
+				.andExpect(status().isConflict());
+		assertTrue(credenciales.findByTiendaIdAndActivoTrue(tienda.getId()).isEmpty());
 	}
 
 	private String jwtVinculado(String tag, String rolTienda) {

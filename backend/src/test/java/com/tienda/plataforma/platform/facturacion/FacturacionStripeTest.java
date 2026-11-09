@@ -1,6 +1,7 @@
 package com.tienda.plataforma.platform.facturacion;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -29,15 +30,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.sun.net.httpserver.HttpServer;
 import com.tienda.plataforma.platform.facturacion.entity.Suscripcion;
+import com.tienda.plataforma.platform.facturacion.repository.SuscripcionEventoRepository;
 import com.tienda.plataforma.platform.facturacion.repository.SuscripcionRepository;
 import com.tienda.plataforma.platform.facturacion.service.FacturacionService;
 import com.tienda.plataforma.tenants.entity.Tienda;
 import com.tienda.plataforma.tenants.repository.TiendaRepository;
 
-/** V19: cobro Stripe real (stub local) + eventos crudos. Sin llaves reales. */
+/** Stripe en modo test (stub local) + eventos crudos. Sin llaves reales. */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Transactional
 class FacturacionStripeTest {
@@ -46,14 +48,34 @@ class FacturacionStripeTest {
 	static final HttpServer stub;
 	static final AtomicReference<String> ultimoAuth = new AtomicReference<>();
 	static final AtomicReference<String> ultimoCuerpoSub = new AtomicReference<>();
+	static final AtomicReference<String> ultimaIdempotenciaSub = new AtomicReference<>();
+	static final AtomicReference<String> ultimaIdempotenciaCustomer = new AtomicReference<>();
+	static final AtomicReference<String> ultimoMetodoSub = new AtomicReference<>();
+	static final AtomicReference<String> ultimaRutaDelete = new AtomicReference<>();
 
 	static {
 		try {
 			stub = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-			stub.createContext("/v1/customers", x -> responder(x, "{\"id\":\"cus_test_1\"}"));
+			stub.createContext("/v1/customers", x -> {
+				ultimaIdempotenciaCustomer.set(x.getRequestHeaders().getFirst("Idempotency-Key"));
+				responder(x, "{\"id\":\"cus_test_1\"}");
+			});
 			stub.createContext("/v1/subscriptions", x -> {
+				ultimoMetodoSub.set(x.getRequestMethod());
+				ultimaIdempotenciaSub.set(x.getRequestHeaders().getFirst("Idempotency-Key"));
+				if ("DELETE".equalsIgnoreCase(x.getRequestMethod())) {
+					ultimaRutaDelete.set(x.getRequestURI().getPath());
+					responder(x, "{\"id\":\"sub_test_9\",\"status\":\"canceled\"}");
+					return;
+				}
+				if ("GET".equalsIgnoreCase(x.getRequestMethod())) {
+					responder(x, "{\"id\":\"sub_test_9\",\"latest_invoice\":"
+							+ "{\"payment_intent\":{\"client_secret\":\"pi_secret_test\"}}}");
+					return;
+				}
 				ultimoCuerpoSub.set(new String(x.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
-				responder(x, "{\"id\":\"sub_test_9\"}");
+				responder(x, "{\"id\":\"sub_test_9\",\"latest_invoice\":"
+						+ "{\"payment_intent\":{\"client_secret\":\"pi_secret_test\"}}}");
 			});
 			stub.createContext("/v1/prices", x -> {
 				String intervalo = x.getRequestURI().getPath().contains("price_a") ? "year" : "month";
@@ -117,6 +139,65 @@ class FacturacionStripeTest {
 		Tienda anual = nuevaTienda("fa-");
 		facturacion.suscribir(anual.getId(), Suscripcion.ANUAL);
 		assertTrue(ultimoCuerpoSub.get().contains("price_a"), ultimoCuerpoSub.get());
+	}
+
+	@Test
+	void suscribirEnviaIdempotenciaEstable() {
+		Tienda tienda = nuevaTienda("fi-");
+		facturacion.suscribir(tienda.getId(), Suscripcion.MENSUAL);
+
+		Suscripcion s = suscripciones.findByTiendaId(tienda.getId()).orElseThrow();
+		assertEquals("facturacion-" + s.getId() + "-customer", ultimaIdempotenciaCustomer.get());
+		assertEquals("facturacion-" + s.getId() + "-mensual-subscription", ultimaIdempotenciaSub.get());
+		assertTrue(ultimoCuerpoSub.get().contains("expand"), ultimoCuerpoSub.get());
+	}
+
+	@Test
+	void suscribirDevuelveClientSecretYVerLoRecupera() {
+		Tienda tienda = nuevaTienda("fs-");
+		var resp = facturacion.suscribir(tienda.getId(), Suscripcion.MENSUAL);
+
+		assertEquals("pi_secret_test", resp.clientSecret());
+		assertEquals("pi_secret_test", facturacion.ver(tienda.getId()).clientSecret());
+	}
+
+	@Test
+	void cancelarTambienCancelaEnStripe() {
+		Tienda tienda = nuevaTienda("fx-");
+		facturacion.suscribir(tienda.getId(), Suscripcion.MENSUAL);
+
+		var resp = facturacion.cancelar(tienda.getId());
+
+		assertEquals(Suscripcion.CANCELADA, resp.estado());
+		assertEquals("DELETE", ultimoMetodoSub.get());
+		assertEquals("/v1/subscriptions/sub_test_9", ultimaRutaDelete.get());
+		assertEquals(Suscripcion.CANCELADA,
+				suscripciones.findByTiendaId(tienda.getId()).orElseThrow().getEstado());
+	}
+
+	@Test
+	void cancelarSinStripeLocalNoLlamaAfuera() {
+		Tienda tienda = nuevaTienda("fl-");
+		Suscripcion s = new Suscripcion();
+		s.setTienda(tienda);
+		s.setPlan(Suscripcion.MENSUAL);
+		s.setEstado(Suscripcion.PENDIENTE);
+		suscripciones.save(s);
+		ultimoMetodoSub.set(null);
+
+		var resp = facturacion.cancelar(tienda.getId());
+
+		assertEquals(Suscripcion.CANCELADA, resp.estado());
+		assertNull(ultimoMetodoSub.get());
+	}
+
+	@Test
+	void constructorRechazaLlavePlataformaLive() {
+		assertThrows(IllegalStateException.class, () -> new FacturacionService(
+				mock(SuscripcionRepository.class),
+				mock(SuscripcionEventoRepository.class),
+				mock(TiendaRepository.class), WHSEC, "sk_live_no_usar", "price_m", "price_a",
+				"http://127.0.0.1:1"));
 	}
 
 	@Test

@@ -10,12 +10,13 @@ sequenceDiagram
     participant A as PaymentAdapter (mock / stripe test)
     participant D as PostgreSQL
 
-    C->>K: POST /api/checkout/:id/pagos (pasarela)
-    K->>P: crearIntento (credenciales de tienda_pasarelas de la tienda, modo test/vivo)
-    P->>A: autorizar(monto, moneda, idempotency-key)
+    C->>K: POST /api/checkout/:id/pagos (pasarela + idempotencia)
+    K->>P: crearIntento (bloquea pedido y reserva saldo)
+    P->>D: lee pagos aprobados + pendientes/procesando
+    P->>A: autorizar(saldo restante, moneda, idempotency-key)
     A-->>P: transaccion_externa_id (mock: ficticio; stripe: pi_...)
-    P->>D: TX: pago pendiente + evento creado
-    K-->>C: 201 pago pendiente
+    P->>D: TX: pago procesando + evento; confirma bajo lock del pedido
+    K-->>C: pago procesando
 ```
 
 ## Webhook idempotente
@@ -55,17 +56,25 @@ Notas:
 ```mermaid
 sequenceDiagram
     actor A as Admin tienda
-    participant C as PagoController
+    participant C as AdminPagoController
     participant P as PagoService
     participant Ad as PaymentAdapter
     participant D as PostgreSQL
 
-    A->>C: POST /api/admin/pagos/:id/reembolsos (monto, motivo)
-    C->>P: valida mismo pedido+pago, moneda y saldo (lock)
-    P->>Ad: reembolsar (credenciales de la tienda)
-    P->>D: TX: reembolso aprobado + evento + pedido reembolsado si total
+    A->>C: POST /api/admin/pagos/:id/reembolsos (monto, motivo, Idempotency-Key)
+    C->>P: valida tenant y clave idempotente
+    P->>D: TX corta: lock pedido/pago; reserva saldo y persiste reembolso pendiente + clave
+    P->>Ad: reembolsar (credenciales + misma clave idempotente)
+    Ad-->>P: refund externo + procesando
+    P->>D: TX corta: guarda referencia externa y estado procesando
+    Ad->>C: webhook firmado refund.succeeded / refund.failed
+    C->>P: valida firma, monto y event-id
+    P->>D: TX: aprueba/rechaza reembolso; solo al cubrir el total actualiza pago/pedido
 ```
 
 Notas:
 - `transaccion_externa_id` único por pasarela/pago (V3); event-id ≠ transaction-id.
-- La suma de aprobados y el saldo reembolsable se calculan con bloqueo; sin sobre-reembolso.
+- El saldo de cobro reserva pagos `pendiente` y `procesando`; dos intentos no pueden comprometer el total a la vez.
+- El reembolso reserva en BD antes de la llamada externa; la clave se guarda como evento de pago y el adaptador la reusa para Stripe.
+- El saldo reembolsable incluye reembolsos pendientes/procesando/aprobados; los rechazados liberan saldo. No se marca el pago/pedido como reembolsado antes de la confirmación.
+- Todo sigue en modo test; `vivo` y llaves `live` están bloqueadas.

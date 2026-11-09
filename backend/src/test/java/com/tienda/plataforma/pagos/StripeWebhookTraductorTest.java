@@ -44,7 +44,7 @@ import com.tienda.plataforma.venta.repository.PedidoRepository;
 /** Traductor Stripe→envelope: firma, mapeo, dedup y montos. Sin red (firmas HMAC locales). */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 @Transactional
 class StripeWebhookTraductorTest {
 
@@ -162,6 +162,8 @@ class StripeWebhookTraductorTest {
 	void refundConfirmaReembolso() throws Exception {
 		pago.setEstado(Pago.APROBADO);
 		pagos.save(pago);
+		pedido.setEstado(Pedido.PAGADO);
+		pedidos.save(pedido);
 		Reembolso r = new Reembolso();
 		r.setPedido(pedido);
 		r.setPago(pago);
@@ -177,6 +179,58 @@ class StripeWebhookTraductorTest {
 		enviar(cuerpo).andExpect(status().isOk());
 		assertEquals(Reembolso.APROBADO,
 				reembolsos.findById(r.getId()).orElseThrow().getEstado());
+		assertEquals(Pago.APROBADO, pagos.findById(pago.getId()).orElseThrow().getEstado());
+		assertEquals(Pedido.PAGADO, pedidos.findById(pedido.getId()).orElseThrow().getEstado());
+	}
+
+	@Test
+	void soloReembolsoTotalConfirmadoCambiaPagoYPedido() throws Exception {
+		pago.setEstado(Pago.APROBADO);
+		pagos.save(pago);
+		pedido.setEstado(Pedido.PAGADO);
+		pedidos.save(pedido);
+		Reembolso r = new Reembolso();
+		r.setPedido(pedido);
+		r.setPago(pago);
+		r.setMonto(new BigDecimal("100.00"));
+		r.setMoneda("PEN");
+		r.setEstado(Reembolso.PROCESANDO);
+		r.setTransaccionExternaId("re_test_full");
+		reembolsos.save(r);
+
+		String cuerpo = "{\"id\":\"evt-st-full\",\"type\":\"refund.succeeded\","
+				+ "\"data\":{\"object\":{\"id\":\"re_test_full\",\"amount\":10000,"
+				+ "\"payment_intent\":\"" + pago.getTransaccionExternaId() + "\"}}}";
+		enviar(cuerpo).andExpect(status().isOk());
+
+		assertEquals(Reembolso.APROBADO, reembolsos.findById(r.getId()).orElseThrow().getEstado());
+		assertEquals(Pago.REEMBOLSADO, pagos.findById(pago.getId()).orElseThrow().getEstado());
+		assertEquals(Pedido.REEMBOLSADO, pedidos.findById(pedido.getId()).orElseThrow().getEstado());
+	}
+
+	@Test
+	void reembolsoFallidoNoCambiaElPagoNiElPedido() throws Exception {
+		pago.setEstado(Pago.APROBADO);
+		pagos.save(pago);
+		pedido.setEstado(Pedido.PAGADO);
+		pedidos.save(pedido);
+		Reembolso r = new Reembolso();
+		r.setPedido(pedido);
+		r.setPago(pago);
+		r.setMonto(new BigDecimal("100.00"));
+		r.setMoneda("PEN");
+		r.setEstado(Reembolso.PROCESANDO);
+		r.setTransaccionExternaId("re_test_failed");
+		reembolsos.save(r);
+
+		String cuerpo = "{\"id\":\"evt-st-fail\",\"type\":\"refund.failed\","
+				+ "\"data\":{\"object\":{\"id\":\"re_test_failed\",\"amount\":10000,"
+				+ "\"payment_intent\":\"" + pago.getTransaccionExternaId() + "\"}}}";
+		enviar(cuerpo).andExpect(status().isOk());
+
+		assertEquals(Reembolso.RECHAZADO, reembolsos.findById(r.getId()).orElseThrow().getEstado());
+		assertEquals(Pago.APROBADO, pagos.findById(pago.getId()).orElseThrow().getEstado());
+		assertEquals(Pedido.PAGADO, pedidos.findById(pedido.getId()).orElseThrow().getEstado());
 	}
 
 	@Test

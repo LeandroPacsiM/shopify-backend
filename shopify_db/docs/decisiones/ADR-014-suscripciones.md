@@ -31,6 +31,10 @@ sin configurar queda pendiente. Verificado en vivo 2026-11-08
 con price validado por intervalo, suscripción cancelada al final;
 llaves solo en memoria y borradas).
 
+> Nota 2026-11-09 (sincronización DB-01): ese V19 nunca se creó; el cobro
+> vive en el backend desde V18 pero solo en modo test (decisión
+> 2026-11-08 en `AGENTS.md`: modo vivo bloqueado). Ver `RF-BILL-03`.
+
 ## Alternativas consideradas
 
 - Comisión por venta vía Connect: rechazado por ahora; onboarding por

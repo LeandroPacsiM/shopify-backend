@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tienda.plataforma.shared.exception.ConflictoException;
 import com.tienda.plataforma.shared.exception.NoAutorizadoException;
+import com.tienda.plataforma.shared.auditoria.AuditoriaService;
 import com.tienda.plataforma.shared.security.TenantContext;
 import com.tienda.plataforma.tenants.entity.Tienda;
 import com.tienda.plataforma.tenants.repository.TiendaRepository;
@@ -35,10 +36,13 @@ public class AdminDescuentoController {
 
 	private final DescuentoRepository descuentos;
 	private final TiendaRepository tiendas;
+	private final AuditoriaService auditoria;
 
-	public AdminDescuentoController(DescuentoRepository descuentos, TiendaRepository tiendas) {
+	public AdminDescuentoController(DescuentoRepository descuentos, TiendaRepository tiendas,
+			AuditoriaService auditoria) {
 		this.descuentos = descuentos;
 		this.tiendas = tiendas;
+		this.auditoria = auditoria;
 	}
 
 	@GetMapping
@@ -77,7 +81,9 @@ public class AdminDescuentoController {
 		descuento.setTerminaEn(req.terminaEn());
 		descuento.setActivo(true);
 		descuento.setCreadoEn(Instant.now());
-		return descuentos.save(descuento);
+		Descuento guardado = descuentos.save(descuento);
+		auditoria.registrar("descuentos", guardado.getId(), "descuento.crear");
+		return guardado;
 	}
 
 	private Long tiendaId() {

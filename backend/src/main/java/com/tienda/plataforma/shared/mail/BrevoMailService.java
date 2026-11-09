@@ -14,7 +14,9 @@ import org.springframework.stereotype.Service;
 
 /**
  * Brevo por HTTPS (`POST /v3/smtp/email`). Se elige con
- * `mail.proveedor=brevo`; sin llave opera en modo log como Resend.
+ * `mail.proveedor=brevo`; sin llave opera en modo log solo cuando
+ * `mail.log-permitido=true` (dev/test). En prod falla cerrado y el log
+ * nunca incluye el contenido (lleva códigos de un solo uso).
  * El remitente debe estar verificado en Brevo (un sender propio envía
  * a cualquier destinatario en plan gratis).
  */
@@ -27,6 +29,7 @@ public class BrevoMailService implements MailService {
 	private final String apiKey;
 	private final String remitente;
 	private final String baseUrl;
+	private final boolean logPermitido;
 	private final HttpClient http = HttpClient.newBuilder()
 			.connectTimeout(Duration.ofSeconds(10))
 			.build();
@@ -34,17 +37,23 @@ public class BrevoMailService implements MailService {
 	public BrevoMailService(
 			@Value("${mail.brevo.key:}") String apiKey,
 			@Value("${mail.remitente:no-reply@example.com}") String remitente,
-			@Value("${mail.brevo.api-base:https://api.brevo.com}") String baseUrl) {
+			@Value("${mail.brevo.api-base:https://api.brevo.com}") String baseUrl,
+			@Value("${mail.log-permitido:true}") boolean logPermitido) {
 		this.apiKey = apiKey == null ? "" : apiKey.trim();
 		this.remitente = remitente;
 		String base = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
 		this.baseUrl = base;
+		this.logPermitido = logPermitido;
 	}
 
 	@Override
 	public void enviar(String para, String asunto, String html) {
 		if (apiKey.isEmpty()) {
-			LOG.info("[mail:log] para={} asunto={} html={}", para, asunto, html);
+			if (!logPermitido) {
+				throw new IllegalStateException("correo sin proveedor configurado");
+			}
+			LOG.info("[mail:log] para={} asunto={} htmlChars={}", para, asunto,
+					html == null ? 0 : html.length());
 			return;
 		}
 		try {

@@ -81,14 +81,23 @@ class StripeAdapterTest {
 	}
 
 	@Test
+	void aceptaLlaveRestringidaDePrueba() {
+		TiendaPasarela creds = creds("rk_test_abc", TiendaPasarela.TEST);
+		adapter.autorizar(creds, BigDecimal.ONE, "PEN", "idem-rk");
+
+		assertEquals("Bearer rk_test_abc", ultimoAuth.get());
+	}
+
+	@Test
 	void reembolsarCreaRefund() {
 		TiendaPasarela creds = creds("sk_test_abc", TiendaPasarela.TEST);
 		PaymentAdapter.ReembolsoResultado rf =
-				adapter.reembolsar(creds, "pi_test_1", new BigDecimal("10.00"));
+				adapter.reembolsar(creds, "pi_test_1", new BigDecimal("10.00"), "refund-idem-1");
 
 		assertEquals("re_test_1", rf.transaccionExternaId());
 		assertEquals(Reembolso.PROCESANDO, rf.estadoInicial());
 		assertEquals("/v1/refunds", ultimaRuta.get());
+		assertEquals("refund-idem-1", ultimaIdempotencia.get());
 		assertTrue(ultimoCuerpo.get().contains("payment_intent=pi_test_1"), ultimoCuerpo.get());
 		assertTrue(ultimoCuerpo.get().contains("amount=1000"), ultimoCuerpo.get());
 	}
@@ -99,7 +108,19 @@ class StripeAdapterTest {
 		assertThrows(IllegalStateException.class,
 				() -> adapter.autorizar(creds, BigDecimal.ONE, "PEN", "i"));
 		assertThrows(IllegalStateException.class,
-				() -> adapter.reembolsar(creds, "pi_x", BigDecimal.ONE));
+				() -> adapter.reembolsar(creds, "pi_x", BigDecimal.ONE, "idem"));
+	}
+
+	@Test
+	void modoTestTambienRechazaUnaLlaveLive() {
+		TiendaPasarela creds = creds("sk_live_x", TiendaPasarela.TEST);
+
+		assertThrows(IllegalStateException.class,
+				() -> adapter.autorizar(creds, BigDecimal.ONE, "PEN", "i"));
+		assertThrows(IllegalStateException.class,
+				() -> adapter.reembolsar(creds, "pi_x", BigDecimal.ONE, "idem"));
+		assertFalse(adapter.verificaFirma(creds, "{}", "t=1,v1=00"));
+		assertNull(ultimaRuta.get(), "una llave live no debe llegar al stub/proveedor");
 	}
 
 	@Test

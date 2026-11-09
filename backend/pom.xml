@@ -123,6 +123,20 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			<!-- Mantener la suite fuera de la BD demo incluso si el entorno local la selecciona. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<systemPropertyVariables>
+						<spring.datasource.url>jdbc:postgresql://localhost:5432/shopify_db_test</spring.datasource.url>
+						<spring.profiles.active>test</spring.profiles.active>
+						<mail.proveedor>resend</mail.proveedor>
+						<mail.resend.key> </mail.resend.key>
+						<mail.brevo.key> </mail.brevo.key>
+					</systemPropertyVariables>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>

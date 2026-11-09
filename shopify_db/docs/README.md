@@ -10,13 +10,13 @@ Documentación de la base de datos de un comercio electrónico tipo Shopify. El 
 | Versión del esquema | **1.0**, como línea base documental; el SQL no declara una versión interna |
 | Motor | PostgreSQL |
 | Fuente de verdad del esquema | [`database/01_esquema_shopify.sql`](../database/01_esquema_shopify.sql) |
-| Alcance estructural verificado | 54 tablas, 79 claves foráneas y 66 índices explícitos (V1 + migraciones V2–V12) |
+| Alcance estructural verificado | 59 tablas, 86 claves foráneas y 71 índices explícitos (V1 + migraciones V2–V19; validado en la BD local) |
 
 La versión **1.0** identifica únicamente esta línea base de la documentación. El archivo SQL no declara una versión interna del esquema ni una tabla de versiones.
 
 ## Documentos
 
-Los ocho documentos numerados componen la línea base funcional y técnica:
+Los diez documentos numerados componen la línea base funcional y técnica:
 
 1. [Arquitectura](01-arquitectura.md): objetivo, alcance, componentes, despliegue e integraciones.
 2. [Modelo de datos](02-modelo-datos.md): catálogo completo de tablas, relaciones y diagramas ER por módulo.
@@ -31,7 +31,7 @@ Los ocho documentos numerados componen la línea base funcional y técnica:
 
 ## Decisiones de arquitectura
 
-Los ADR registran decisiones y sus consecuencias; no sustituyen al esquema SQL:
+Los ADR registran decisiones y sus consecuencias; no sustituyen al esquema SQL. La migración repetible `R__roles_base.sql` inserta los roles del RBAC (`super_admin`, `admin`, `operador`, `cliente`); es dato de referencia aplicado por Flyway, no seed de demostración.
 
 1. [ADR-001: Uso de PostgreSQL](decisiones/ADR-001-uso-postgresql.md).
 2. [ADR-002: Una única base relacional sin Redis](decisiones/ADR-002-base-unica.md).

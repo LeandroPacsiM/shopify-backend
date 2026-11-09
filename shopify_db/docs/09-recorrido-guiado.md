@@ -4,8 +4,8 @@
 
 ## Qué tenemos hoy
 
-- V1 (`01_esquema_shopify.sql`) + migraciones V2–V12: **54 tablas, 79 FKs, 66 índices**, triggers de `actualizado_en`.
-- Decisiones: 2FA TOTP para todos, sin guest checkout, mock de pagos primero, cliente obligatorio, nada se borra con historial (se cancela/archiva/desactiva).
+- V1 (`01_esquema_shopify.sql`) + migraciones V2–V19: **59 tablas, 86 FKs, 71 índices**, triggers de `actualizado_en`.
+- Decisiones: 2FA TOTP para todos, sin guest checkout, mock de pagos primero (Stripe solo en test), cliente obligatorio, nada se borra con historial (se cancela/archiva/desactiva).
 - Falta: todo el backend y el frontend. La BD es el esqueleto; el músculo viene después.
 
 ## La historia de DEMO-0001 en 9 pasos
@@ -24,8 +24,8 @@
 
 ## Verlo en pgAdmin (10 minutos)
 
-1. Crea la BD `shopify_db_demo` y ejecuta en orden: `01_esquema_shopify.sql` y luego `migrations/V2__...` hasta `V12__...`.
-2. Copia el bloque de `07-datos-prueba.md` a `seed_demo.local.sql` y ejecútalo (ya es compatible con V2–V12, con 2 tiendas).
+1. Crea la BD `shopify_db_demo` y ejecuta en orden: `01_esquema_shopify.sql` y luego `migrations/V2__...` hasta `V19__...` (o deja que Flyway lo haga al arrancar el backend).
+2. Copia el bloque de `07-datos-prueba.md` a `seed_demo.local.sql` y ejecútalo (ya es compatible con V2–V19, con 2 tiendas).
 3. Corre estas comprobaciones y cuenta la historia con sus resultados:
 
 ```sql

@@ -10,13 +10,13 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.tienda.plataforma.auth.entity.Usuario;
 import com.tienda.plataforma.inventario.entity.ArticuloInventario;
 import com.tienda.plataforma.inventario.entity.MovimientoInventario;
 import com.tienda.plataforma.inventario.entity.NivelInventario;
 import com.tienda.plataforma.inventario.repository.ArticuloInventarioRepository;
 import com.tienda.plataforma.inventario.repository.MovimientoInventarioRepository;
 import com.tienda.plataforma.inventario.repository.NivelInventarioRepository;
+import com.tienda.plataforma.platform.facturacion.service.FacturacionService;
 import com.tienda.plataforma.realtime.NotificacionService;
 import com.tienda.plataforma.shared.exception.ConflictoException;
 import com.tienda.plataforma.shared.exception.NoEncontradoException;
@@ -35,6 +35,7 @@ import com.tienda.plataforma.venta.entity.PedidoImpuesto;
 import com.tienda.plataforma.venta.entity.PedidoItem;
 import com.tienda.plataforma.venta.repository.CarritoItemRepository;
 import com.tienda.plataforma.venta.repository.CarritoRepository;
+import com.tienda.plataforma.venta.repository.CheckoutDescuentoRepository;
 import com.tienda.plataforma.venta.repository.CheckoutSesionRepository;
 import com.tienda.plataforma.venta.repository.DescuentoRepository;
 import com.tienda.plataforma.venta.repository.HistorialEstadoPedidoRepository;
@@ -53,6 +54,7 @@ public class PedidoService {
 
 	private final CheckoutService checkoutService;
 	private final CheckoutSesionRepository checkouts;
+	private final CheckoutDescuentoRepository checkoutDescuentos;
 	private final CarritoRepository carritos;
 	private final CarritoItemRepository items;
 	private final PedidoRepository pedidos;
@@ -66,17 +68,21 @@ public class PedidoService {
 	private final NivelInventarioRepository niveles;
 	private final MovimientoInventarioRepository movimientos;
 	private final NotificacionService notificaciones;
+	private final FacturacionService facturacion;
 	private final SecureRandom aleatorio = new SecureRandom();
 
 	public PedidoService(CheckoutService checkoutService, CheckoutSesionRepository checkouts,
-			CarritoRepository carritos, CarritoItemRepository items, PedidoRepository pedidos,
+			CheckoutDescuentoRepository checkoutDescuentos, CarritoRepository carritos,
+			CarritoItemRepository items, PedidoRepository pedidos,
 			PedidoItemRepository pedidoItems, PedidoDireccionRepository pedidoDirecciones,
 			PedidoImpuestoRepository pedidoImpuestos, PedidoDescuentoRepository pedidoDescuentos,
 			HistorialEstadoPedidoRepository historial, DescuentoRepository descuentos,
 			ArticuloInventarioRepository articulos, NivelInventarioRepository niveles,
-			MovimientoInventarioRepository movimientos, NotificacionService notificaciones) {
+			MovimientoInventarioRepository movimientos, NotificacionService notificaciones,
+			FacturacionService facturacion) {
 		this.checkoutService = checkoutService;
 		this.checkouts = checkouts;
+		this.checkoutDescuentos = checkoutDescuentos;
 		this.carritos = carritos;
 		this.items = items;
 		this.pedidos = pedidos;
@@ -90,6 +96,7 @@ public class PedidoService {
 		this.niveles = niveles;
 		this.movimientos = movimientos;
 		this.notificaciones = notificaciones;
+		this.facturacion = facturacion;
 	}
 
 	public CheckoutResponse crearCheckout(Long usuarioId, String slug, CrearCheckoutRequest req) {
@@ -97,14 +104,25 @@ public class PedidoService {
 	}
 
 	@Transactional
-	public PedidoResponse confirmar(Long usuarioId, Long checkoutId) {
+	public PedidoResponse confirmar(Long usuarioId, Long tiendaId, Long checkoutId) {
 		CheckoutSesion checkout = checkouts.findConBloqueoById(checkoutId)
 				.orElseThrow(() -> new NoEncontradoException("checkout"));
-		if (!checkout.getCliente().getUsuario().getId().equals(usuarioId)) {
+		Carrito carrito = checkout.getCarrito();
+		if (tiendaId == null || !checkout.getTienda().getId().equals(tiendaId)
+				|| !checkout.getCliente().getTienda().getId().equals(tiendaId)
+				|| !checkout.getCliente().getUsuario().getId().equals(usuarioId)
+				|| !carrito.getTienda().getId().equals(tiendaId)
+				|| carrito.getCliente() == null
+				|| !carrito.getCliente().getId().equals(checkout.getCliente().getId())
+				|| !carrito.getCliente().getTienda().getId().equals(tiendaId)) {
 			throw new NoEncontradoException("checkout");
 		}
+		facturacion.exigirActiva(tiendaId);
 		if (!CheckoutSesion.PENDIENTE.equals(checkout.getEstado())) {
 			throw new ConflictoException("checkout no pendiente");
+		}
+		if (!Carrito.ACTIVO.equals(carrito.getEstado())) {
+			throw new ConflictoException("carrito no activo");
 		}
 		if (checkout.getExpiraEn() != null && checkout.getExpiraEn().isBefore(Instant.now())) {
 			checkout.setEstado(CheckoutSesion.EXPIRADO);
@@ -114,11 +132,14 @@ public class PedidoService {
 		if (pedidos.findByCheckoutSesionId(checkoutId).isPresent()) {
 			throw new ConflictoException("checkout ya convertido");
 		}
-		List<CarritoItem> lineas = items.findByCarritoId(checkout.getCarrito().getId());
+		List<CarritoItem> lineas = items.findByCarritoId(carrito.getId());
 		if (lineas.isEmpty()) {
 			throw new ConflictoException("carrito vacío");
 		}
 		for (CarritoItem l : lineas) {
+			if (!l.getVariante().getProducto().getTienda().getId().equals(tiendaId)) {
+				throw new NoEncontradoException("checkout");
+			}
 			if (!l.getVariante().comprable()
 					|| l.getVariante().getPrecio().compareTo(l.getPrecioUnitario()) != 0) {
 				throw new ConflictoException("precios cambiaron, reinicia el checkout");
@@ -145,8 +166,9 @@ public class PedidoService {
 		pedido.setActualizadoEn(Instant.now());
 		pedidos.save(pedido);
 
-		if (checkout.getDescuento() != null) {
-			consumirDescuento(pedido, checkout);
+		if (checkout.getDescuento() != null
+				|| !checkoutDescuentos.findByCheckoutSesionId(checkout.getId()).isEmpty()) {
+			consumirDescuentos(pedido, checkout);
 		}
 
 		for (CarritoItem l : lineas) {
@@ -179,7 +201,6 @@ public class PedidoService {
 
 		checkout.setEstado(CheckoutSesion.COMPLETADO);
 		checkouts.save(checkout);
-		Carrito carrito = checkout.getCarrito();
 		carrito.setEstado(Carrito.CONVERTIDO);
 		carrito.setActualizadoEn(Instant.now());
 		carritos.save(carrito);
@@ -199,9 +220,20 @@ public class PedidoService {
 				pedido.getEmailContacto(), pedido.getTelefonoContacto(), pedido.getNotasCliente());
 	}
 
-	/** Revalida con bloqueo, registra la aplicación y consume un uso (RF-DISC-02). */
-	private void consumirDescuento(Pedido pedido, CheckoutSesion checkout) {
-		Descuento descuento = descuentos.findConBloqueoById(checkout.getDescuento().getId())
+	/** Revalida con bloqueo, registra las aplicaciones y consume un uso por código (RF-DISC-02). */
+	private void consumirDescuentos(Pedido pedido, CheckoutSesion checkout) {
+		var filas = checkoutDescuentos.findByCheckoutSesionId(checkout.getId());
+		if (filas.isEmpty() && checkout.getDescuento() != null) {
+			consumirUno(pedido, checkout.getDescuento().getId(), checkout.getDescuentoTotal());
+			return;
+		}
+		for (var fila : filas) {
+			consumirUno(pedido, fila.getDescuento().getId(), fila.getMontoAplicado());
+		}
+	}
+
+	private void consumirUno(Pedido pedido, Long descuentoId, BigDecimal monto) {
+		Descuento descuento = descuentos.findConBloqueoById(descuentoId)
 				.orElseThrow(() -> new NoEncontradoException("descuento"));
 		if (!descuento.vigente(Instant.now())) {
 			throw new ConflictoException("descuento vencido");
@@ -212,7 +244,7 @@ public class PedidoService {
 		PedidoDescuento aplicacion = new PedidoDescuento();
 		aplicacion.setPedido(pedido);
 		aplicacion.setDescuento(descuento);
-		aplicacion.setMontoAplicado(checkout.getDescuentoTotal());
+		aplicacion.setMontoAplicado(monto);
 		pedidoDescuentos.save(aplicacion);
 		descuento.setUsosActuales(descuento.getUsosActuales() + 1);
 		descuentos.save(descuento);

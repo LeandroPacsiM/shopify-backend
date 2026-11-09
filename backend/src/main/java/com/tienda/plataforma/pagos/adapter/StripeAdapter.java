@@ -20,14 +20,16 @@ import com.tienda.plataforma.pagos.entity.Reembolso;
 import com.tienda.plataforma.pagos.entity.TiendaPasarela;
 import com.tienda.plataforma.shared.security.CryptoService;
 import com.tienda.plataforma.shared.security.FirmaStripe;
+import com.tienda.plataforma.shared.security.StripeTestKeys;
 
 /**
- * Stripe en modo test detrás de {@link PaymentAdapter} (RF-PAY-01).
- * Llama a la API real con la llave de LA TIENDA (descifrada en memoria,
- * jamás a logs); en modo vivo se niega (el live llega después).
+ * Stripe exclusivamente en modo test detrás de {@link PaymentAdapter} (RF-PAY-01).
+ * Solo usa llaves {@code sk_test_} o {@code rk_test_} de la tienda (descifradas
+ * en memoria, jamás a logs); las llaves y el modo vivo se rechazan.
  *
  * <p>Formato de {@code secretoCifrado} (descifrado): {@code sk_test_...}
- * o {@code sk_test_...;whsec_...} para verificar webhooks con el esquema
+ * / {@code rk_test_...}, opcionalmente seguido por {@code ;whsec_...} para
+ * verificar webhooks con el esquema
  * real de Stripe ({@code t=..,v1=..} HMAC-SHA256). Sin {@code whsec} la
  * firma se rechaza (falso por defecto seguro).
  */
@@ -55,21 +57,22 @@ public class StripeAdapter implements PaymentAdapter {
 	@Override
 	public CargoResultado autorizar(TiendaPasarela credenciales, BigDecimal monto, String moneda,
 			String idempotencia) {
-		exigirTest(credenciales);
+		String claveSecreta = claveSecretaTest(credenciales);
 		String cuerpo = "amount=" + centimos(monto)
 				+ "&currency=" + URLEncoder.encode(moneda.toLowerCase(), StandardCharsets.UTF_8)
 				+ "&automatic_payment_methods[enabled]=true"
 				+ "&automatic_payment_methods[allow_redirects]=never";
-		String respuesta = post("/v1/payment_intents", skDe(credenciales), idempotencia, cuerpo);
+		String respuesta = post("/v1/payment_intents", claveSecreta, idempotencia, cuerpo);
 		return new CargoResultado(idDe(respuesta, "payment_intent"), Pago.PROCESANDO, "stripe");
 	}
 
 	@Override
-	public ReembolsoResultado reembolsar(TiendaPasarela credenciales, String transaccionId, BigDecimal monto) {
-		exigirTest(credenciales);
+	public ReembolsoResultado reembolsar(TiendaPasarela credenciales, String transaccionId,
+			BigDecimal monto, String idempotencia) {
+		String claveSecreta = claveSecretaTest(credenciales);
 		String cuerpo = "payment_intent=" + URLEncoder.encode(transaccionId, StandardCharsets.UTF_8)
 				+ "&amount=" + centimos(monto);
-		String respuesta = post("/v1/refunds", skDe(credenciales), null, cuerpo);
+		String respuesta = post("/v1/refunds", claveSecreta, idempotencia, cuerpo);
 		return new ReembolsoResultado(idDe(respuesta, "refund"), Reembolso.PROCESANDO);
 	}
 
@@ -80,26 +83,36 @@ public class StripeAdapter implements PaymentAdapter {
 	 */
 	@Override
 	public boolean verificaFirma(TiendaPasarela credenciales, String cuerpo, String firma) {
+		try {
+			claveSecretaTest(credenciales);
+		} catch (RuntimeException e) {
+			return false;
+		}
 		return FirmaStripe.verificar(whsecDe(credenciales), cuerpo, firma);
 	}
 
-	private void exigirTest(TiendaPasarela credenciales) {
+	private String claveSecretaTest(TiendaPasarela credenciales) {
 		if (!TiendaPasarela.TEST.equals(credenciales.getModo())) {
 			throw new IllegalStateException("stripe test solo en modo test");
 		}
-	}
-
-	private String skDe(TiendaPasarela credenciales) {
 		String plano = crypto.descifrar(credenciales.getSecretoCifrado());
 		int corte = plano.indexOf(';');
-		return corte < 0 ? plano : plano.substring(0, corte);
+		String clave = (corte < 0 ? plano : plano.substring(0, corte)).trim();
+		if (!StripeTestKeys.esClaveApiSecretaTest(clave)) {
+			throw new IllegalStateException("stripe requiere una llave secreta de prueba");
+		}
+		return clave;
 	}
 
 	private String whsecDe(TiendaPasarela credenciales) {
 		try {
 			String plano = crypto.descifrar(credenciales.getSecretoCifrado());
 			int corte = plano.indexOf(';');
-			return corte < 0 ? "" : plano.substring(corte + 1);
+			if (corte < 0) {
+				return "";
+			}
+			String secreto = plano.substring(corte + 1).trim();
+			return StripeTestKeys.esSecretoWebhook(secreto) ? secreto : "";
 		} catch (Exception e) {
 			return "";
 		}

@@ -33,7 +33,7 @@ import jakarta.persistence.EntityManager;
 /** RF-TENANT-02: sin fuga entre tiendas (diagrama 05, contrato en 10). */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 @Transactional
 class TrackingSeguridadTest {
 

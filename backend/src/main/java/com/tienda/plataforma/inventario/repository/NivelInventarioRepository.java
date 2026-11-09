@@ -16,6 +16,10 @@ public interface NivelInventarioRepository extends JpaRepository<NivelInventario
 
 	List<NivelInventario> findByArticuloId(Long articuloId);
 
+	List<NivelInventario> findByUbicacionId(Long ubicacionId);
+
+	Optional<NivelInventario> findByArticuloIdAndUbicacionId(Long articuloId, Long ubicacionId);
+
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Optional<NivelInventario> findConBloqueoById(Long id);
 

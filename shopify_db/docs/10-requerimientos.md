@@ -1,7 +1,7 @@
 # 10 — Requerimientos funcionales y no funcionales
 
 > Alcance: plataforma SaaS Multi-Tienda (tenants) y Multi-Sucursal (locations).
-> Lista completa de lo decidido hasta hoy (V1 + V2–V12, decisiones A, mock-first, multi-tenant, SPA único). Estado por ítem: **BD** = impuesto por la base, **BE** = pendiente del backend, **FE** = pendiente del frontend.
+> Lista completa de lo decidido hasta hoy (V1 + V2–V18, decisiones A, mock-first, multi-tenant, SPA único). Estado por ítem: **BD** = impuesto por la base, **BE** = pendiente del backend, **FE** = pendiente del frontend.
 
 ## RF-AUTH — Identidad y 2FA
 
@@ -75,6 +75,7 @@
 | RF-TENANT-01 | Filtro Tenant: todo recurso (producto, pedido, inventario, cliente, descuento) pertenece a una `tienda_id` y está estrictamente aislado; ninguna query cruza tiendas | BD + BE |
 | RF-TENANT-02 | El `tienda_id` se deriva de la identidad/autorización, nunca del request; tests anti-fuga entre tiendas | BE |
 | RF-TENANT-03 | `super_admin` opera a nivel plataforma (lista y agregados de tiendas, compliance); prohibido leer o modificar datos internos de tiendas; los roles de tienda solo ven la suya | BE + FE |
+| RF-TENANT-04 | Onboarding de comerciante: usuario autenticado crea su tienda (`POST /auth/tiendas`, slug único) y queda `admin` con suscripción `pendiente` (trial: sin checkout hasta activar); un usuario puede tener varias tiendas | BE |
 
 ### Contrato backend (sin código aún: criterios de aceptación)
 
@@ -100,7 +101,7 @@
 |---|---|---|
 | RF-BILL-01 | Suscripción al software POR tienda (`suscripciones` V18: una por `tienda_id`, plan mensual/anual, estados pendiente/activa/vencida/cancelada); el dinero del comprador nunca pasa por la plataforma | BD + BE |
 | RF-BILL-02 | Webhook de plataforma con firma + dedup por event-id: pagada → activa + periodo + descongela; vencida → congela (`activa=FALSE`) | BE |
-| RF-BILL-03 | Tienda congelada (inactiva o sin suscripción vigente): sin checkout nuevo ni lecturas, salvo su facturación para pagar y reactivar; cobro Stripe real V19 (customer + subscription con price por plan, `invoice.payment_succeeded` renueva, `subscription.deleted` cancela) | BE |
+| RF-BILL-03 | Tienda congelada (inactiva o sin suscripción vigente): sin checkout nuevo ni lecturas, salvo su facturación para pagar y reactivar; cobro Stripe solo en modo test (decisión 2026-11-08: modo vivo bloqueado, no existe V19): customer + subscription con price por plan, `invoice.payment_succeeded` renueva, `subscription.deleted` cancela | BE |
 
 ## RNF — No funcionales
 

@@ -61,6 +61,23 @@ sequenceDiagram
     C-->>U: usuario re-enrola con QR (flujo registro)
 ```
 
+## Crear tienda / onboarding (RF-TENANT-04)
+
+```mermaid
+sequenceDiagram
+    actor M as Comerciante
+    participant C as AuthController
+    participant S as TiendaOnboardingService
+    participant D as PostgreSQL
+
+    M->>C: POST /auth/tiendas (JWT verificado + TOTP, nombre, slug)
+    C->>S: crear(usuarioId)
+    S->>D: slug único? (409 si existe)
+    S->>D: TX: tienda activa + vínculo admin + suscripción pendiente + auditoría
+    C-->>M: 201 tienda (sin checkout hasta suscribir/activar)
+    Note over C,D: un usuario puede crear varias tiendas
+```
+
 ## Verificación email + reset (RF-AUTH-07, V15 `tokens_cuenta`)
 
 ```mermaid

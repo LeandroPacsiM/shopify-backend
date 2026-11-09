@@ -13,8 +13,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 /**
- * Resend por HTTPS. Sin llave configurada opera en modo log
- * (no rompe flujos; los correos quedan en el log para dev).
+ * Resend por HTTPS. Sin llave configurada opera en modo log solo cuando
+ * `mail.log-permitido=true` (dev/test); en prod es `false` y falla cerrado.
+ * El log nunca incluye el contenido: los correos llevan códigos de un solo uso.
  */
 @Service
 @ConditionalOnProperty(name = "mail.proveedor", havingValue = "resend", matchIfMissing = true)
@@ -24,21 +25,28 @@ public class ResendMailService implements MailService {
 
 	private final String apiKey;
 	private final String remitente;
+	private final boolean logPermitido;
 	private final HttpClient http = HttpClient.newBuilder()
 			.connectTimeout(Duration.ofSeconds(10))
 			.build();
 
 	public ResendMailService(
 			@Value("${mail.resend.key:}") String apiKey,
-			@Value("${mail.remitente:no-reply@example.com}") String remitente) {
+			@Value("${mail.remitente:no-reply@example.com}") String remitente,
+			@Value("${mail.log-permitido:true}") boolean logPermitido) {
 		this.apiKey = apiKey == null ? "" : apiKey.trim();
 		this.remitente = remitente;
+		this.logPermitido = logPermitido;
 	}
 
 	@Override
 	public void enviar(String para, String asunto, String html) {
 		if (apiKey.isEmpty()) {
-			LOG.info("[mail:log] para={} asunto={} html={}", para, asunto, html);
+			if (!logPermitido) {
+				throw new IllegalStateException("correo sin proveedor configurado");
+			}
+			LOG.info("[mail:log] para={} asunto={} htmlChars={}", para, asunto,
+					html == null ? 0 : html.length());
 			return;
 		}
 		try {

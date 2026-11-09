@@ -11,5 +11,7 @@ public interface TiendaUsuarioRepository extends JpaRepository<TiendaUsuario, Lo
 
 	Optional<TiendaUsuario> findByTiendaIdAndUsuarioId(Long tiendaId, Long usuarioId);
 
+	List<TiendaUsuario> findByTiendaId(Long tiendaId);
+
 	List<TiendaUsuario> findByUsuarioId(Long usuarioId);
 }

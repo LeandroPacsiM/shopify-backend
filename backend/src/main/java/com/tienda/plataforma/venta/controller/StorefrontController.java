@@ -57,7 +57,7 @@ public class StorefrontController {
 	public CarritoResponse agregarLinea(@PathVariable String slug,
 			@RequestHeader("X-Carrito-Token") String token,
 			@Valid @RequestBody AgregarLineaRequest req) {
-		return carritoService.agregarLinea(slug, token, req);
+		return carritoService.agregarLinea(slug, token, clienteId(), req);
 	}
 
 	private Long usuarioId() {
@@ -69,7 +69,8 @@ public class StorefrontController {
 	}
 
 	private Long clienteId() {
-		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+		var authentication = SecurityContextHolder.getContext().getAuthentication();
+		Object principal = authentication == null ? null : authentication.getPrincipal();
 		if (!(principal instanceof Long id)) {
 			return null;
 		}

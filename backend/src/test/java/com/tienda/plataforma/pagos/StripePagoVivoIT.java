@@ -42,7 +42,7 @@ import com.tienda.plataforma.venta.repository.PedidoRepository;
  * Lee llaves SOLO del entorno; sin ellas se omite.
  */
 @SpringBootTest
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 class StripePagoVivoIT {
 
 	@Autowired

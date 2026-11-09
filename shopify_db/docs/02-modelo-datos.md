@@ -4,7 +4,7 @@
 
 El modelo representa un comercio electrónico tipo Shopify multi-tienda, organizado en diez módulos: tiendas y tenants, usuarios y seguridad, catálogo, inventario, carrito y checkout, pedidos, pagos, envíos y tracking, descuentos, y reseñas y listas. La única fuente de verdad es [`database/01_esquema_shopify.sql`](../database/01_esquema_shopify.sql).
 
-El esquema contiene **58 tablas**, **89 claves foráneas** y **69 índices creados explícitamente con `CREATE INDEX`** (V1 en `01_esquema_shopify.sql` + migraciones `V2–V18` en `database/migrations/`). El recuento de índices no incluye los índices implícitos que PostgreSQL pueda crear para restricciones de clave primaria o unicidad.
+El esquema contiene **59 tablas**, **86 claves foráneas** y **71 índices creados explícitamente con `CREATE INDEX`** (V1 en `01_esquema_shopify.sql` + migraciones `V2–V19` en `database/migrations/`). El recuento de índices no incluye los índices implícitos que PostgreSQL pueda crear para restricciones de clave primaria o unicidad.
 
 Los diagramas muestran solamente claves primarias, claves foráneas y campos relevantes. Las entidades de otros módulos se repiten cuando son necesarias para representar una FK real; no se dibujan relaciones para referencias meramente lógicas.
 
@@ -63,7 +63,7 @@ Los diagramas muestran solamente claves primarias, claves foráneas y campos rel
 | `niveles_inventario` | Cantidades disponibles y reservadas por artículo y ubicación. |
 | `movimientos_inventario` | Entradas, salidas, ajustes, reservas y liberaciones de un nivel de inventario. |
 
-### Carrito y checkout: 5 tablas
+### Carrito y checkout: 6 tablas
 
 | Tabla | Propósito |
 | --- | --- |
@@ -72,6 +72,7 @@ Los diagramas muestran solamente claves primarias, claves foráneas y campos rel
 | `metodos_envio` | Catálogo de métodos de envío seleccionables durante el checkout. |
 | `tasas_impuesto` | Configuración independiente de tasas por ámbito geográfico. |
 | `checkout_sesiones` | Datos e importes de un intento de checkout asociado a un carrito. |
+| `checkout_descuentos` | Descuentos aplicados a un checkout y monto calculado (V19). |
 
 ### Pedidos: 5 tablas
 
@@ -145,11 +146,12 @@ Las tablas asociativas contienen dos FK y resuelven relaciones muchos a muchos. 
 - `niveles_inventario`: artículos de inventario con ubicaciones, además de sus cantidades.
 - `carrito_items`: carritos con variantes, además de cantidad y precio.
 - `pedido_descuentos`: pedidos con descuentos y monto aplicado.
+- `checkout_descuentos`: checkouts con descuentos y monto calculado (V19).
 - `descuento_productos`: descuentos con productos.
 - `descuento_colecciones`: descuentos con colecciones.
 - `lista_deseo_items`: listas de deseos con productos.
 
-Las restricciones `UNIQUE` declaradas impiden duplicar determinadas parejas. No se presupone esa unicidad donde el SQL no la declara, como en `pedido_descuentos`.
+Las restricciones `UNIQUE` declaradas impiden duplicar determinadas parejas (`uq_pedido_descuento`, `uq_checkout_descuento` (V19)). No se presupone esa unicidad donde el SQL no la declara.
 
 ### Referencias lógicas polimórficas
 
@@ -168,7 +170,7 @@ Por ello, los diagramas no conectan estos campos con tablas concretas. Borrar o 
 
 ## Diagrama ER general simplificado
 
-Este diagrama resume el recorrido principal desde catálogo y carrito hasta pedido, pago y envío. Los diez diagramas posteriores distribuyen las 79 FK sin omitir las relaciones de módulos no incluidos aquí.
+Este diagrama resume el recorrido principal desde catálogo y carrito hasta pedido, pago y envío. Los diez diagramas posteriores distribuyen las 84 FK sin omitir las relaciones de módulos no incluidos aquí.
 
 ```mermaid
 erDiagram
@@ -922,4 +924,4 @@ La calificación de una reseña está limitada por el esquema a valores entre 1 
 
 El esquema combina borrados en cascada con conservación de cabeceras históricas. Las líneas dependientes se eliminan en cascada cuando desaparece su agregado, mientras que varias referencias comerciales opcionales usan `ON DELETE SET NULL`. En particular, `pedido_items` y `pedido_direcciones` conservan valores propios para que el pedido no dependa por completo de los datos actuales del catálogo o de la libreta de direcciones.
 
-Las acciones `ON DELETE` representadas en esta descripción proceden del SQL más las migraciones V2–V12; no se añaden disparadores ni reglas automáticas no declaradas salvo los triggers de `actualizado_en` (V7). La aplicación debe mantener las invariantes que una FK no puede expresar, como la correspondencia de un reembolso con un pago perteneciente al mismo pedido o la validez de las referencias lógicas polimórficas.
+Las acciones `ON DELETE` representadas en esta descripción proceden del SQL más las migraciones V2–V19; no se añaden disparadores ni reglas automáticas no declaradas salvo los triggers de `actualizado_en` (V7). La aplicación debe mantener las invariantes que una FK no puede expresar, como la correspondencia de un reembolso con un pago perteneciente al mismo pedido o la validez de las referencias lógicas polimórficas.

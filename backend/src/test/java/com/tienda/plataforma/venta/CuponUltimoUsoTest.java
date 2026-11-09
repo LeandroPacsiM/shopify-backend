@@ -27,6 +27,8 @@ import com.tienda.plataforma.catalogo.repository.ProductoRepository;
 import com.tienda.plataforma.catalogo.repository.ProductoVarianteRepository;
 import com.tienda.plataforma.inventario.entity.ArticuloInventario;
 import com.tienda.plataforma.inventario.repository.ArticuloInventarioRepository;
+import com.tienda.plataforma.platform.facturacion.entity.Suscripcion;
+import com.tienda.plataforma.platform.facturacion.repository.SuscripcionRepository;
 import com.tienda.plataforma.shared.security.JwtService;
 import com.tienda.plataforma.tenants.entity.Cliente;
 import com.tienda.plataforma.tenants.entity.Direccion;
@@ -52,7 +54,7 @@ import com.tienda.plataforma.venta.repository.PedidoDescuentoRepository;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 class CuponUltimoUsoTest {
 
 	@Autowired
@@ -85,6 +87,8 @@ class CuponUltimoUsoTest {
 	DescuentoRepository descuentos;
 	@Autowired
 	PedidoDescuentoRepository pedidoDescuentos;
+	@Autowired
+	SuscripcionRepository suscripciones;
 
 	String jwt;
 	String slug;
@@ -101,6 +105,12 @@ class CuponUltimoUsoTest {
 		tienda.setActiva(true);
 		tiendas.save(tienda);
 		slug = tienda.getSlug();
+		Suscripcion suscripcion = new Suscripcion();
+		suscripcion.setTienda(tienda);
+		suscripcion.setPlan(Suscripcion.MENSUAL);
+		suscripcion.setEstado(Suscripcion.ACTIVA);
+		suscripcion.setPeriodoFin(java.time.Instant.now().plusSeconds(30L * 24 * 60 * 60));
+		suscripciones.save(suscripcion);
 
 		Usuario usuario = new Usuario();
 		usuario.setEmail("c-" + tag + "@example.com");

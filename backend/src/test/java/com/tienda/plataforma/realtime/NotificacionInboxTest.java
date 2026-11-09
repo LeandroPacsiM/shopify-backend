@@ -29,7 +29,7 @@ import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
 /** V16: lo avisado por WS queda en bandeja, aislado por tienda. Rollback al final. */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 @Transactional
 class NotificacionInboxTest {
 
@@ -73,13 +73,23 @@ class NotificacionInboxTest {
 				.header("Authorization", "Bearer " + jwtA)
 				.header("X-Tienda-Slug", tiendaA.getSlug()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(2));
+				.andExpect(jsonPath("$.totalElements").value(2))
+				.andExpect(jsonPath("$.content.length()").value(2));
 
 		mvc.perform(get("/api/admin/notificaciones")
 				.header("Authorization", "Bearer " + jwtB)
 				.header("X-Tienda-Slug", tiendaB.getSlug()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(1));
+				.andExpect(jsonPath("$.totalElements").value(1));
+
+		mvc.perform(get("/api/admin/notificaciones")
+				.param("page", "1").param("size", "1")
+				.header("Authorization", "Bearer " + jwtA)
+				.header("X-Tienda-Slug", tiendaA.getSlug()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalElements").value(2))
+				.andExpect(jsonPath("$.totalPages").value(2))
+				.andExpect(jsonPath("$.content.length()").value(1));
 	}
 
 	@Test

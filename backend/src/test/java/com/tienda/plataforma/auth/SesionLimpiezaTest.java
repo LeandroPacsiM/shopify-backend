@@ -19,7 +19,7 @@ import com.tienda.plataforma.auth.service.AuthService;
 
 /** RF-AUTH-05: el job purga lo vencido hace más de la gracia; lo demás queda. Rollback al final. */
 @SpringBootTest
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 @Transactional
 class SesionLimpiezaTest {
 

@@ -25,7 +25,7 @@ import com.tienda.plataforma.tenants.entity.Tienda;
 
 /** RF-AUTH-07: verificación email + reset por tokens de un solo uso (V15). Rollback al final. */
 @SpringBootTest
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 @Transactional
 class TokenCuentaTest {
 

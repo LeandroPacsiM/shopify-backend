@@ -31,9 +31,13 @@ import com.tienda.plataforma.tenants.entity.Tienda;
 import com.tienda.plataforma.tenants.repository.ClienteRepository;
 import com.tienda.plataforma.tenants.repository.DireccionRepository;
 import com.tienda.plataforma.tenants.repository.TiendaRepository;
+import com.tienda.plataforma.venta.entity.Carrito;
+import com.tienda.plataforma.venta.entity.CheckoutSesion;
 import com.tienda.plataforma.venta.entity.Pedido;
 import com.tienda.plataforma.venta.entity.PedidoDireccion;
 import com.tienda.plataforma.venta.entity.Resena;
+import com.tienda.plataforma.venta.repository.CarritoRepository;
+import com.tienda.plataforma.venta.repository.CheckoutSesionRepository;
 import com.tienda.plataforma.venta.repository.PedidoDireccionRepository;
 import com.tienda.plataforma.venta.repository.PedidoRepository;
 import com.tienda.plataforma.venta.repository.ResenaRepository;
@@ -41,7 +45,7 @@ import com.tienda.plataforma.venta.repository.ResenaRepository;
 /** GDPR: anonimiza PII y conserva historial. Rollback al final. */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 @Transactional
 class PrivacidadTest {
 
@@ -66,12 +70,17 @@ class PrivacidadTest {
 	@Autowired
 	SesionRepository sesiones;
 	@Autowired
+	CarritoRepository carritos;
+	@Autowired
+	CheckoutSesionRepository checkouts;
+	@Autowired
 	ProductoRepository productos;
 
 	Tienda tienda;
 	Usuario usuario;
 	Cliente cliente;
 	Pedido pedido;
+	CheckoutSesion checkout;
 	String jwt;
 
 	@BeforeEach
@@ -157,6 +166,30 @@ class PrivacidadTest {
 		s.setExpiraEn(Instant.now().plusSeconds(30 * 24 * 60 * 60));
 		sesiones.save(s);
 
+		Carrito carrito = new Carrito();
+		carrito.setTienda(tienda);
+		carrito.setCliente(cliente);
+		carrito.setToken("gd-cart-" + tag);
+		carrito.setMoneda("PEN");
+		carrito.setEstado(Carrito.ACTIVO);
+		carritos.save(carrito);
+
+		checkout = new CheckoutSesion();
+		checkout.setTienda(tienda);
+		checkout.setCarrito(carrito);
+		checkout.setCliente(cliente);
+		checkout.setMoneda("PEN");
+		checkout.setSubtotal(BigDecimal.TEN);
+		checkout.setImpuestoTotal(BigDecimal.ZERO);
+		checkout.setEnvioTotal(BigDecimal.ZERO);
+		checkout.setDescuentoTotal(BigDecimal.ZERO);
+		checkout.setTotal(BigDecimal.TEN);
+		checkout.setEstado(CheckoutSesion.COMPLETADO);
+		checkout.setEmailContacto("gd-" + tag + "@example.com");
+		checkout.setTelefonoContacto("999");
+		checkout.setNotasCliente("nota checkout");
+		checkouts.save(checkout);
+
 		jwt = jwtService.acceso(usuario.getId(), List.of("cliente"));
 	}
 
@@ -183,6 +216,12 @@ class PrivacidadTest {
 		assertNull(p.getEmailContacto());
 		assertNull(p.getTelefonoContacto());
 		assertEquals(0, p.getTotal().compareTo(new BigDecimal("10.00")));
+
+		CheckoutSesion sesion = checkouts.findById(checkout.getId()).orElseThrow();
+		assertNull(sesion.getEmailContacto());
+		assertNull(sesion.getTelefonoContacto());
+		assertNull(sesion.getNotasCliente());
+		assertEquals(0, sesion.getTotal().compareTo(new BigDecimal("10.00")));
 
 		assertTrue(pedidoDirecciones.findByPedidoId(pedido.getId()).stream()
 				.allMatch(d -> "Eliminado".equals(d.getNombreDestinatario())));

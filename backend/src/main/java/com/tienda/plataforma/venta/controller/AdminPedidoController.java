@@ -1,7 +1,6 @@
 package com.tienda.plataforma.venta.controller;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,13 +29,15 @@ public class AdminPedidoController {
 	}
 
 	@GetMapping
-	@Operation(summary = "Lista pedidos de la tienda, opcionalmente por estado")
-	public List<PedidoResponse> listar(@RequestParam(required = false) String estado) {
-		return adminPedidoService.listar(tiendaId(), estado);
+	@Operation(summary = "Lista pedidos de la tienda, opcionalmente por estado (paginado)")
+	public Page<PedidoResponse> listar(@RequestParam(required = false) String estado,
+			@RequestParam(required = false) Integer page,
+			@RequestParam(required = false) Integer size) {
+		return adminPedidoService.listar(tiendaId(), estado, page, size);
 	}
 
 	@PatchMapping("/{id}/cancelar")
-	@Operation(summary = "Cancela un pedido pendiente o pagado y libera reservas")
+	@Operation(summary = "Cancela un pedido pendiente sin cobro; el pagado exige reembolso previo")
 	public PedidoResponse cancelar(@PathVariable Long id) {
 		return adminPedidoService.cancelar(tiendaId(), id);
 	}

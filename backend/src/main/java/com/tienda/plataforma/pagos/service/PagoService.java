@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -20,12 +21,10 @@ import com.tienda.plataforma.pagos.dto.WebhookPagoRequest;
 import com.tienda.plataforma.pagos.entity.Pago;
 import com.tienda.plataforma.pagos.entity.PagoEvento;
 import com.tienda.plataforma.pagos.entity.PasarelaPago;
-import com.tienda.plataforma.pagos.entity.Reembolso;
 import com.tienda.plataforma.pagos.entity.TiendaPasarela;
 import com.tienda.plataforma.pagos.repository.PagoEventoRepository;
 import com.tienda.plataforma.pagos.repository.PagoRepository;
 import com.tienda.plataforma.pagos.repository.PasarelaPagoRepository;
-import com.tienda.plataforma.pagos.repository.ReembolsoRepository;
 import com.tienda.plataforma.pagos.repository.TiendaPasarelaRepository;
 import com.tienda.plataforma.realtime.NotificacionService;
 import com.tienda.plataforma.shared.exception.ConflictoException;
@@ -36,6 +35,9 @@ import com.tienda.plataforma.venta.entity.Pedido;
 import com.tienda.plataforma.venta.repository.HistorialEstadoPedidoRepository;
 import com.tienda.plataforma.venta.repository.PedidoRepository;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+
 /**
  * RF-PAY: intentos, webhooks idempotentes y reembolsos con saldo (diagrama 06, V3).
  * La moneda del pago/reembolso debe igualar la del pedido (validado aquí).
@@ -45,46 +47,65 @@ public class PagoService {
 
 	private final PagoRepository pagos;
 	private final PagoEventoRepository eventos;
-	private final ReembolsoRepository reembolsos;
 	private final PasarelaPagoRepository pasarelas;
 	private final TiendaPasarelaRepository tiendaPasarelas;
 	private final PedidoRepository pedidos;
 	private final HistorialEstadoPedidoRepository historial;
 	private final NotificacionService notificaciones;
+	private final ReembolsoWorkflowService reembolsoWorkflow;
+	private final EntityManager entityManager;
 	private final Map<String, PaymentAdapter> adapters;
 	private final ObjectMapper json = new ObjectMapper();
 
-	public PagoService(PagoRepository pagos, PagoEventoRepository eventos, ReembolsoRepository reembolsos,
+	public PagoService(PagoRepository pagos, PagoEventoRepository eventos,
 			PasarelaPagoRepository pasarelas, TiendaPasarelaRepository tiendaPasarelas,
 			PedidoRepository pedidos, HistorialEstadoPedidoRepository historial,
-			NotificacionService notificaciones, List<PaymentAdapter> adapters) {
+			NotificacionService notificaciones, ReembolsoWorkflowService reembolsoWorkflow,
+			EntityManager entityManager, List<PaymentAdapter> adapters) {
 		this.pagos = pagos;
 		this.eventos = eventos;
-		this.reembolsos = reembolsos;
 		this.pasarelas = pasarelas;
 		this.tiendaPasarelas = tiendaPasarelas;
 		this.pedidos = pedidos;
 		this.historial = historial;
 		this.notificaciones = notificaciones;
+		this.reembolsoWorkflow = reembolsoWorkflow;
+		this.entityManager = entityManager;
 		this.adapters = adapters.stream().collect(Collectors.toMap(PaymentAdapter::codigo, Function.identity()));
 	}
 
 	@Transactional
 	public PagoResponse crearIntento(Long usuarioId, Long pedidoId, String codigoPasarela, String idempotencia) {
 		Pedido pedido = pedidoDe(usuarioId, pedidoId);
-		if (Pedido.CANCELADO.equals(pedido.getEstado()) || Pedido.ENTREGADO.equals(pedido.getEstado())) {
+		String claveCliente = validarIdempotencia(idempotencia);
+		String codigo = codigoPasarela.trim().toLowerCase(Locale.ROOT);
+		if (Pedido.CANCELADO.equals(pedido.getEstado()) || Pedido.ENTREGADO.equals(pedido.getEstado())
+				|| Pedido.REEMBOLSADO.equals(pedido.getEstado())) {
 			throw new ConflictoException("pedido no cobrable");
+		}
+		var intentoPrevio = eventos.findByPedidoIdAndReferenciaExterna(pedidoId, "intento:" + claveCliente);
+		if (intentoPrevio.isPresent()) {
+			PagoEvento eventoPrevio = intentoPrevio.get();
+			if (!"intento.creado".equals(eventoPrevio.getTipoEvento())) {
+				throw new ConflictoException("Idempotency-Key ya está asociado a otro evento");
+			}
+			Pago anterior = eventoPrevio.getPago();
+			if (!codigo.equals(anterior.getPasarela().getCodigo())) {
+				throw new ConflictoException("Idempotency-Key ya se usó con otra pasarela");
+			}
+			return new PagoResponse(anterior.getId(), anterior.getEstado(), anterior.getMonto(),
+					anterior.getTransaccionExternaId());
 		}
 		BigDecimal restante = restante(pedido);
 		if (restante.signum() <= 0) {
 			throw new ConflictoException("pedido ya cubierto");
 		}
-		TiendaPasarela creds = credenciales(pedido, codigoPasarela);
+		TiendaPasarela creds = credenciales(pedido, codigo);
 		PaymentAdapter adapter = adapters.get(creds.getPasarela().getCodigo());
 		if (adapter == null) {
 			throw new ConflictoException("pasarela sin adapter");
 		}
-		var cargo = adapter.autorizar(creds, restante, pedido.getMoneda(), idempotencia);
+		var cargo = adapter.autorizar(creds, restante, pedido.getMoneda(), claveProveedorIntento(pedidoId, claveCliente));
 
 		Pago pago = new Pago();
 		pago.setPedido(pedido);
@@ -102,7 +123,7 @@ public class PagoService {
 		evento.setTipoEvento("intento.creado");
 		evento.setEstadoAnterior(null);
 		evento.setEstadoNuevo(pago.getEstado());
-		evento.setReferenciaExterna("intento:" + idempotencia);
+		evento.setReferenciaExterna("intento:" + claveCliente);
 		evento.setCreadoEn(Instant.now());
 		eventos.save(evento);
 		return new PagoResponse(pago.getId(), pago.getEstado(), pago.getMonto(), pago.getTransaccionExternaId());
@@ -113,14 +134,25 @@ public class PagoService {
 	public void webhook(String codigoPasarela, WebhookPagoRequest req) {
 		PasarelaPago pasarela = pasarelas.findByCodigo(codigoPasarela)
 				.orElseThrow(() -> new NoAutorizadoException("pasarela"));
-		Pago pago = pagos.findByPasarelaIdAndTransaccionExternaId(pasarela.getId(), req.transaccionId())
+		Pago encontrado = pagos.findByPasarelaIdAndTransaccionExternaId(pasarela.getId(), req.transaccionId())
 				.orElseThrow(() -> new NoEncontradoException("pago"));
 		TiendaPasarela creds = tiendaPasarelas
-				.findByTiendaIdAndPasarelaId(pago.getPedido().getTienda().getId(), pasarela.getId())
+				.findByTiendaIdAndPasarelaId(encontrado.getPedido().getTienda().getId(), pasarela.getId())
 				.orElseThrow(() -> new NoAutorizadoException("pasarela"));
 		PaymentAdapter adapter = adapters.get(pasarela.getCodigo());
 		if (adapter == null || !adapter.verificaFirma(creds, req.cuerpo(), req.firma())) {
 			throw new NoAutorizadoException("firma inválida");
+		}
+
+		Pedido pedido = pedidos.findConBloqueoById(encontrado.getPedido().getId())
+				.orElseThrow(() -> new NoEncontradoException("pedido"));
+		entityManager.refresh(pedido, LockModeType.PESSIMISTIC_WRITE);
+		Pago pago = pagos.findConBloqueoById(encontrado.getId())
+				.orElseThrow(() -> new NoEncontradoException("pago"));
+		entityManager.refresh(pago, LockModeType.PESSIMISTIC_WRITE);
+		if (!pasarela.getId().equals(pago.getPasarela().getId())
+				|| !req.transaccionId().equals(pago.getTransaccionExternaId())) {
+			throw new NoEncontradoException("pago");
 		}
 		if (eventos.findByPagoIdAndReferenciaExterna(pago.getId(), req.eventId()).isPresent()) {
 			return;
@@ -139,8 +171,8 @@ public class PagoService {
 		registrarEvento(pago, "webhook." + req.estado(), anterior, nuevo, req.eventId());
 
 		if (Pago.APROBADO.equals(nuevo)) {
-			Pedido pedido = pago.getPedido();
-			if (restante(pedido).signum() <= 0 && Pedido.PENDIENTE.equals(pedido.getEstado())) {
+			if (cobrado(pedido).compareTo(pedido.getTotal()) >= 0
+					&& Pedido.PENDIENTE.equals(pedido.getEstado())) {
 				pedido.setEstado(Pedido.PAGADO);
 				pedido.setActualizadoEn(Instant.now());
 				pedidos.save(pedido);
@@ -176,7 +208,7 @@ public class PagoService {
 				if ("refund.updated".equals(tipo) && !"succeeded".equals(objeto.path("status").asText())) {
 					return;
 				}
-				confirmarReembolso(objeto.path("id").asText(),
+				reembolsoWorkflow.confirmarDesdeStripe(objeto.path("id").asText(),
 						objeto.path("amount").asLong(-1), eventId, firma, cuerpo,
 						"refund.failed".equals(tipo));
 			}
@@ -186,38 +218,9 @@ public class PagoService {
 		}
 	}
 
-	private void confirmarReembolso(String reId, long centimos, String eventId,
-			String firma, String cuerpo, boolean fallido) {
-		Reembolso reembolso = reembolsos.findByTransaccionExternaId(reId)
-				.orElseThrow(() -> new NoEncontradoException("reembolso"));
-		Pago pago = reembolso.getPago();
-		TiendaPasarela creds = tiendaPasarelas
-				.findByTiendaIdAndPasarelaId(pago.getPedido().getTienda().getId(),
-						pago.getPasarela().getId())
-				.orElseThrow(() -> new NoAutorizadoException("pasarela"));
-		PaymentAdapter adapter = adapters.get(pago.getPasarela().getCodigo());
-		if (adapter == null || !adapter.verificaFirma(creds, cuerpo, firma)) {
-			throw new NoAutorizadoException("firma inválida");
-		}
-		if (eventos.findByPagoIdAndReferenciaExterna(pago.getId(), eventId).isPresent()) {
-			return;
-		}
-		if (centimos >= 0 && centimos != centimosDe(reembolso.getMonto())) {
-			throw new ConflictoException("monto inconsistente");
-		}
-		String anterior = reembolso.getEstado();
-		String nuevo = fallido ? Reembolso.RECHAZADO : Reembolso.APROBADO;
-		if (Reembolso.PROCESANDO.equals(anterior) || Reembolso.PENDIENTE.equals(anterior)) {
-			reembolso.setEstado(nuevo);
-			reembolsos.save(reembolso);
-		}
-		registrarEvento(pago, "webhook.reembolso." + nuevo, anterior,
-				reembolso.getEstado(), eventId);
-	}
-
 	private void verificarMonto(String codigoPasarela, String transaccionId, long centimos) {
 		if (centimos < 0) {
-			return;
+			throw new ConflictoException("monto de webhook inválido");
 		}
 		PasarelaPago pasarela = pasarelas.findByCodigo(codigoPasarela)
 				.orElseThrow(() -> new NoEncontradoException("pasarela"));
@@ -256,62 +259,30 @@ public class PagoService {
 		return n.asText();
 	}
 
-	@Transactional
-	public ReembolsoResponse reembolsar(Long tiendaId, Long pagoId, BigDecimal monto, String motivo) {
-		Pago pago = pagos.findById(pagoId).orElseThrow(() -> new NoEncontradoException("pago"));
-		Pedido pedido = pago.getPedido();
-		if (!pedido.getTienda().getId().equals(tiendaId) || !pago.getPedido().getId().equals(pedido.getId())) {
-			throw new NoEncontradoException("pago");
-		}
-		if (!Pago.APROBADO.equals(pago.getEstado())) {
-			throw new ConflictoException("pago no aprobado");
-		}
-		if (!pago.getMoneda().equals(pedido.getMoneda())) {
-			throw new ConflictoException("moneda inconsistente");
-		}
-		BigDecimal yaDevuelto = reembolsos.findByPagoId(pagoId).stream()
-				.filter(r -> !Reembolso.RECHAZADO.equals(r.getEstado()))
-				.map(Reembolso::getMonto)
-				.reduce(BigDecimal.ZERO, BigDecimal::add);
-		BigDecimal saldo = pago.getMonto().subtract(yaDevuelto);
-		if (monto.compareTo(saldo) > 0) {
-			throw new ConflictoException("excede el saldo reembolsable");
-		}
-		TiendaPasarela creds = credenciales(pedido, pago.getPasarela().getCodigo());
-		PaymentAdapter adapter = adapters.get(pago.getPasarela().getCodigo());
-		var devolucion = adapter.reembolsar(creds, pago.getTransaccionExternaId(), monto);
-
-		Reembolso reembolso = new Reembolso();
-		reembolso.setPedido(pedido);
-		reembolso.setPago(pago);
-		reembolso.setMonto(monto);
-		reembolso.setMoneda(pago.getMoneda());
-		reembolso.setMotivo(motivo);
-		reembolso.setEstado(devolucion.estadoInicial());
-		reembolso.setTransaccionExternaId(devolucion.transaccionExternaId());
-		reembolso.setCreadoEn(Instant.now());
-		reembolsos.save(reembolso);
-		registrarEvento(pago, "reembolso.solicitado", pago.getEstado(), pago.getEstado(),
-				"reembolso:" + reembolso.getId());
-
-		if (saldo.subtract(monto).signum() == 0) {
-			pago.setEstado(Pago.REEMBOLSADO);
-			pagos.save(pago);
-			pedido.setEstado(Pedido.REEMBOLSADO);
-			pedido.setActualizadoEn(Instant.now());
-			pedidos.save(pedido);
-			historial(pedido, Pedido.PAGADO, Pedido.REEMBOLSADO, "Reembolso total");
-		}
-		return new ReembolsoResponse(reembolso.getId(), reembolso.getEstado(), reembolso.getMonto(),
-				reembolso.getTransaccionExternaId());
+	public ReembolsoResponse reembolsar(Long tiendaId, Long pagoId, BigDecimal monto,
+			String motivo, String idempotencia) {
+		return reembolsoWorkflow.reembolsar(tiendaId, pagoId, monto, motivo, idempotencia);
 	}
 
 	private Pedido pedidoDe(Long usuarioId, Long pedidoId) {
-		Pedido pedido = pedidos.findById(pedidoId).orElseThrow(() -> new NoEncontradoException("pedido"));
+		Pedido pedido = pedidos.findConBloqueoById(pedidoId)
+				.orElseThrow(() -> new NoEncontradoException("pedido"));
+		entityManager.refresh(pedido, LockModeType.PESSIMISTIC_WRITE);
 		if (!pedido.getCliente().getUsuario().getId().equals(usuarioId)) {
 			throw new NoEncontradoException("pedido");
 		}
 		return pedido;
+	}
+
+	private String validarIdempotencia(String idempotencia) {
+		if (idempotencia == null || !idempotencia.trim().matches("[A-Za-z0-9._~-]{1,200}")) {
+			throw new ConflictoException("idempotencia inválida");
+		}
+		return idempotencia.trim();
+	}
+
+	private String claveProveedorIntento(Long pedidoId, String clave) {
+		return "pago-" + pedidoId + "-" + clave;
 	}
 
 	private TiendaPasarela credenciales(Pedido pedido, String codigoPasarela) {
@@ -324,11 +295,20 @@ public class PagoService {
 	}
 
 	private BigDecimal restante(Pedido pedido) {
-		BigDecimal aprobado = pagos.findByPedidoId(pedido.getId()).stream()
+		BigDecimal comprometido = pagos.findByPedidoId(pedido.getId()).stream()
+				.filter(p -> Pago.APROBADO.equals(p.getEstado())
+						|| Pago.PENDIENTE.equals(p.getEstado())
+						|| Pago.PROCESANDO.equals(p.getEstado()))
+				.map(Pago::getMonto)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		return pedido.getTotal().subtract(comprometido);
+	}
+
+	private BigDecimal cobrado(Pedido pedido) {
+		return pagos.findByPedidoId(pedido.getId()).stream()
 				.filter(p -> Pago.APROBADO.equals(p.getEstado()))
 				.map(Pago::getMonto)
 				.reduce(BigDecimal.ZERO, BigDecimal::add);
-		return pedido.getTotal().subtract(aprobado);
 	}
 
 	private String mapearEstado(String externo) {

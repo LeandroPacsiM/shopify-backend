@@ -7,7 +7,9 @@
 	"variable": [
 		{ "key": "baseUrl", "value": "http://localhost:8080" },
 		{ "key": "tiendaSlug", "value": "tienda-demo" },
-		{ "key": "accessToken", "value": "" }
+		{ "key": "accessToken", "value": "" },
+		{ "key": "carritoToken", "value": "", "description": "Se copia del campo token de 'ver carrito'" },
+		{ "key": "idempotencia", "value": "demo-0001", "description": "Rotar por cada reembolso nuevo; repetir para reintentar" }
 	],
 	"item": [
 		{
@@ -123,6 +125,18 @@
 				{
 					"name": "logout",
 					"request": { "method": "POST", "url": "{{baseUrl}}/auth/logout" }
+				},
+				{
+					"name": "crear tienda (onboarding, queda admin)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/tiendas",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"nombre\":\"Mi Tienda\",\"slug\":\"mi-tienda\"}" }
+					}
 				}
 			]
 		},
@@ -159,7 +173,8 @@
 						"header": [
 							{ "key": "Content-Type", "value": "application/json" },
 							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" },
+							{ "key": "X-Carrito-Token", "value": "{{carritoToken}}" }
 						],
 						"body": { "mode": "raw", "raw": "{\"varianteId\":1,\"cantidad\":2}" }
 					}
@@ -185,6 +200,132 @@
 							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
 						]
 					}
+				},
+				{
+					"name": "ver carrito (devuelve token)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/carrito",
+						"header": [
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "tracking de mi pedido",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/pedidos/:id/tracking",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "ver perfil",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/perfil",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "actualizar perfil",
+					"request": {
+						"method": "PATCH",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/perfil",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"nombre\":\"Ana\",\"apellido\":\"Paz\",\"telefono\":\"999888777\",\"aceptaMarketing\":true}" }
+					}
+				},
+				{
+					"name": "ver wishlist",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/wishlist",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "quitar de wishlist",
+					"request": {
+						"method": "DELETE",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/wishlist/:productoId",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "crear reseña",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/resenas",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"productoId\":1,\"calificacion\":5,\"titulo\":\"Buena\",\"comentario\":\"Me sirvió\"}" }
+					}
+				},
+				{
+					"name": "mis reseñas",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/resenas",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "reseñas de producto (público)",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/productos/:slug/resenas"
+					}
+				},
+				{
+					"name": "colecciones",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/colecciones"
+					}
+				},
+				{
+					"name": "productos de colección",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/colecciones/:slug/productos"
+					}
+				},
+				{
+					"name": "etiquetas",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/etiquetas"
+					}
+				},
+				{
+					"name": "productos por etiqueta",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/productos?etiqueta=oferta"
+					}
 				}
 			]
 		},
@@ -201,7 +342,7 @@
 							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
 							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
 						],
-						"body": { "mode": "raw", "raw": "{\"carritoToken\":\"mi-carrito\",\"direccionEnvioId\":1,\"direccionFacturacionId\":1,\"metodoEnvioId\":1,\"codigoDescuento\":null,\"emailContacto\":\"cliente1@example.com\",\"telefonoContacto\":\"999888777\",\"notasCliente\":\"Llamar antes de entregar\"}" }
+						"body": { "mode": "raw", "raw": "{\"carritoToken\":\"mi-carrito\",\"direccionEnvioId\":1,\"direccionFacturacionId\":1,\"metodoEnvioId\":1,\"codigoDescuento\":null,\"codigosDescuento\":[],\"emailContacto\":\"cliente1@example.com\",\"telefonoContacto\":\"999888777\",\"notasCliente\":\"Llamar antes de entregar\"}" }
 					}
 				},
 				{
@@ -237,7 +378,7 @@
 					"name": "pedidos",
 					"request": {
 						"method": "GET",
-						"url": "{{baseUrl}}/api/admin/pedidos?estado=pagado",
+						"url": "{{baseUrl}}/api/admin/pedidos?estado=pagado&page=0&size=20",
 						"header": [
 							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
 							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
@@ -258,10 +399,110 @@
 					}
 				},
 				{
+					"name": "crear colección",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/colecciones",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"titulo\":\"Ofertas\",\"slug\":\"ofertas\"}" }
+					}
+				},
+				{
+					"name": "asignar producto a colección",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/colecciones/:id/productos",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"productoId\":1,\"posicion\":0}" }
+					}
+				},
+				{
+					"name": "crear etiqueta",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/etiquetas",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"nombre\":\"Oferta\",\"slug\":\"oferta\"}" }
+					}
+				},
+				{
+					"name": "asignar etiqueta",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/etiquetas/:id/productos",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"productoId\":1}" }
+					}
+				},
+				{
 					"name": "reset 2FA usuario",
 					"request": {
 						"method": "POST",
 						"url": "{{baseUrl}}/api/admin/usuarios/:id/2fa/reset",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "equipo listar",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/admin/usuarios",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "equipo agregar",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/usuarios",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"email\":\"operador@example.com\",\"rol\":\"operador\"}" }
+					}
+				},
+				{
+					"name": "equipo cambiar rol",
+					"request": {
+						"method": "PATCH",
+						"url": "{{baseUrl}}/api/admin/usuarios/:id/rol",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"rol\":\"admin\"}" }
+					}
+				},
+				{
+					"name": "equipo revocar",
+					"request": {
+						"method": "DELETE",
+						"url": "{{baseUrl}}/api/admin/usuarios/:id",
 						"header": [
 							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
 							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
@@ -296,7 +537,7 @@
 					"name": "notificaciones (bandeja V16)",
 					"request": {
 						"method": "GET",
-						"url": "{{baseUrl}}/api/admin/notificaciones",
+						"url": "{{baseUrl}}/api/admin/notificaciones?page=0&size=20",
 						"header": [
 							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
 							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
@@ -359,6 +600,103 @@
 							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
 						]
 					}
+				},
+				{
+					"name": "cancelar pedido (solo sin cobro; pagado exige reembolso)",
+					"request": {
+						"method": "PATCH",
+						"url": "{{baseUrl}}/api/admin/pedidos/:id/cancelar",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "crear envío (consume reserva)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/pedidos/:id/envios",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"transportistaId\":null,\"ubicacionOrigenId\":1,\"items\":[{\"pedidoItemId\":1,\"cantidad\":1}]}" }
+					}
+				},
+				{
+					"name": "reembolsar pago (rotar Idempotency-Key)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/pagos/:id/reembolsos",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" },
+							{ "key": "Idempotency-Key", "value": "{{idempotencia}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"monto\":10.00,\"motivo\":\"devolución demo\"}" }
+					}
+				},
+				{
+					"name": "reseñas pendientes",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/admin/resenas?aprobada=false",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "aprobar reseña",
+					"request": {
+						"method": "PATCH",
+						"url": "{{baseUrl}}/api/admin/resenas/:id/aprobar",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "crear ubicación",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/inventario/ubicaciones",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"nombre\":\"Central\",\"ciudad\":\"Lima\",\"pais\":\"PE\"}" }
+					}
+				},
+				{
+					"name": "ver niveles",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/admin/inventario/niveles?varianteId=1",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						]
+					}
+				},
+				{
+					"name": "movimiento stock (entrada/salida/ajuste)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/inventario/movimientos",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
+							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+						],
+						"body": { "mode": "raw", "raw": "{\"varianteId\":1,\"ubicacionId\":1,\"tipo\":\"entrada\",\"cantidad\":10}" }
+					}
 				}
 			]
 		},
@@ -369,7 +707,7 @@
 					"name": "tiendas",
 					"request": {
 						"method": "GET",
-						"url": "{{baseUrl}}/api/ops/tiendas",
+						"url": "{{baseUrl}}/api/ops/tiendas?page=0&size=20",
 						"header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
 					}
 				},
@@ -377,7 +715,7 @@
 					"name": "auditoria",
 					"request": {
 						"method": "GET",
-						"url": "{{baseUrl}}/api/ops/auditoria?entidad=pedidos",
+						"url": "{{baseUrl}}/api/ops/auditoria?page=0&size=20",
 						"header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
 					}
 				}

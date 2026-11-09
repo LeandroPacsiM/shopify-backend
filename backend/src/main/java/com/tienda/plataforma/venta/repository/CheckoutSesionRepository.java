@@ -14,6 +14,8 @@ public interface CheckoutSesionRepository extends JpaRepository<CheckoutSesion, 
 
 	List<CheckoutSesion> findByCarritoId(Long carritoId);
 
+	List<CheckoutSesion> findByClienteId(Long clienteId);
+
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Optional<CheckoutSesion> findConBloqueoById(Long id);
 }

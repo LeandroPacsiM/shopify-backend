@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.tienda.plataforma.pagos.entity.PagoEvento;
 
@@ -12,4 +14,8 @@ public interface PagoEventoRepository extends JpaRepository<PagoEvento, Long> {
 	List<PagoEvento> findByPagoId(Long pagoId);
 
 	Optional<PagoEvento> findByPagoIdAndReferenciaExterna(Long pagoId, String referenciaExterna);
+
+	@Query("select e from PagoEvento e where e.pago.pedido.id = :pedidoId and e.referenciaExterna = :referencia")
+	Optional<PagoEvento> findByPedidoIdAndReferenciaExterna(@Param("pedidoId") Long pedidoId,
+			@Param("referencia") String referencia);
 }

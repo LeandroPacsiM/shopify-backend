@@ -134,9 +134,9 @@ Estas reglas se derivan de `database/01_esquema_shopify.sql`. Las restricciones 
 
 ### Regla: Un pedido puede tener varios descuentos aplicados
 
-**Descripción**: `pedido_descuentos` relaciona cada pedido con los descuentos efectivamente aplicados y conserva el monto otorgado por cada uno. La relación no única con `pedidos` permite el multidescuento.
+**Descripción**: `pedido_descuentos` relaciona cada pedido con los descuentos efectivamente aplicados y conserva el monto otorgado por cada uno. La relación no única con `pedidos` permite el multidescuento. Desde V19, `checkout_descuentos` conserva los mismos códigos y montos calculados durante el checkout; al confirmar se trasladan a `pedido_descuentos`.
 
-**Implementación**: `monto_aplicado >= 0` y las claves foráneas son reales; `descuento_id` usa `ON DELETE RESTRICT` para conservar el historial. El `UNIQUE (pedido_id, descuento_id)` de V6 impide aplicar el mismo código dos veces al pedido (como Shopify). El backend debe validar compatibilidad y acumulación entre códigos distintos (máx. 5 producto/pedido + 1 envío; shipping+shipping nunca), calcular cada importe y hacer coincidir la suma con el total mediante su lógica transaccional.
+**Implementación**: `monto_aplicado >= 0` y las claves foráneas son reales; `descuento_id` usa `ON DELETE RESTRICT` para conservar el historial. El `UNIQUE (pedido_id, descuento_id)` de V6 y el `UNIQUE (checkout_sesion_id, descuento_id)` de V19 impiden aplicar el mismo código dos veces al pedido o al checkout (como Shopify). El backend debe validar compatibilidad y acumulación entre códigos distintos (máx. 5 producto/pedido + 1 envío; shipping+shipping nunca), calcular cada importe y hacer coincidir la suma con el total mediante su lógica transaccional.
 
 **Ejemplo**: Un pedido puede recibir un descuento porcentual y otro de envío gratis si la política permite combinarlos. Cada aplicación genera su fila con el importe calculado; una notificación repetida no debe duplicarlas.
 

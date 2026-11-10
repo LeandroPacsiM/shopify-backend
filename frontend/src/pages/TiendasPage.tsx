@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { misTiendas } from '../api/auth';
 import type { MiTienda } from '../api/auth';
 import { useAuth } from '../auth/AuthContext';
+import AdminShell from '../components/AdminShell';
 
 /** Mis tiendas: membresías del comerciante (funciona en trial). */
 export default function TiendasPage() {
@@ -21,21 +22,26 @@ export default function TiendasPage() {
   if (!accessToken) return <Navigate to="/login" replace />;
 
   return (
-    <div className="page">
-      <nav className="topnav">
-        <Link to="/admin">← Admin</Link>
-        <span>Mis tiendas</span>
-        <Link to="/tiendas/nueva">+ Nueva</Link>
-      </nav>
-      <section className="card narrow">
-        <h2>GET /auth/tiendas</h2>
+    <AdminShell>
+      <div className="page-head">
+        <div>
+          <h2>Mis tiendas</h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>
+            Elige con cuál trabajar.
+          </p>
+        </div>
+        <Link to="/tiendas/nueva" className="btn btn-primary" style={{ width: 'auto' }}>
+          + Nueva
+        </Link>
+      </div>
+      <div className="card">
         {error && <p className="banner banner-error">{error}</p>}
         {!tiendas && !error && <p className="muted">Cargando…</p>}
         {tiendas && tiendas.length === 0 && (
           <p className="muted">Aún no tienes tiendas. <Link to="/tiendas/nueva">Crea la primera</Link>.</p>
         )}
         {tiendas && tiendas.length > 0 && (
-          <ul>
+          <ul className="tienda-list">
             {tiendas.map((t) => (
               <li key={t.id}>
                 <b>{t.nombre}</b> <span className="mono small">{t.slug}</span>{' '}
@@ -44,7 +50,7 @@ export default function TiendasPage() {
             ))}
           </ul>
         )}
-      </section>
-    </div>
+      </div>
+    </AdminShell>
   );
 }

@@ -14,6 +14,9 @@ target/
 # Config local del agente (puede traer credenciales; cada máquina la suya)
 opencode.json
 
+# Grabaciones del MCP Playwright (ruido local de depuración)
+.playwright-mcp/
+
 # Frontend (cuando exista)
 frontend/node_modules/
 frontend/dist/

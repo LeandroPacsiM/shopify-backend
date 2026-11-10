@@ -16,6 +16,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.tienda.plataforma.auth.dto.AgregarMiembroRequest;
 import com.tienda.plataforma.auth.entity.Usuario;import com.tienda.plataforma.auth.repository.RegistroAuditoriaRepository;
@@ -68,6 +70,8 @@ class AuditoriaTiendaTest {
 	@Autowired
 	RegistroAuditoriaRepository auditoria;
 	@Autowired
+	PlatformTransactionManager txManager;
+	@Autowired
 	TiendaRepository tiendas;
 	@Autowired
 	UsuarioRepository usuarios;
@@ -98,14 +102,24 @@ class AuditoriaTiendaTest {
 		tienda.setNombre("A-" + tag);
 		tienda.setSlug("a-" + tag);
 		tienda.setActiva(true);
-		tiendas.save(tienda);
 
 		admin = nuevoUsuario("aa-" + tag);
 		TiendaUsuario v = new TiendaUsuario();
 		v.setTienda(tienda);
 		v.setUsuario(admin);
 		v.setRolTienda(TiendaUsuario.ADMIN);
-		vinculos.save(v);
+
+		// V22: tienda + owner en una sola TX (el trigger dispara al commit).
+		Usuario dueno = nuevoUsuario("aao-" + tag);
+		TiendaUsuario vOwner = new TiendaUsuario();
+		vOwner.setTienda(tienda);
+		vOwner.setUsuario(dueno);
+		vOwner.setRolTienda(TiendaUsuario.STORE_OWNER);
+		new TransactionTemplate(txManager).executeWithoutResult(s -> {
+			tiendas.save(tienda);
+			vinculos.save(v);
+			vinculos.save(vOwner);
+		});
 
 		clienteUsuario = nuevoUsuario("ac-" + tag);
 		Cliente cliente = new Cliente();

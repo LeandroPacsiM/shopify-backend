@@ -17,6 +17,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.tienda.plataforma.auth.entity.Usuario;
 import com.tienda.plataforma.auth.repository.UsuarioRepository;
@@ -32,8 +34,10 @@ import com.tienda.plataforma.pagos.service.PagoService;
 import com.tienda.plataforma.shared.exception.ConflictoException;
 import com.tienda.plataforma.tenants.entity.Cliente;
 import com.tienda.plataforma.tenants.entity.Tienda;
+import com.tienda.plataforma.tenants.entity.TiendaUsuario;
 import com.tienda.plataforma.tenants.repository.ClienteRepository;
 import com.tienda.plataforma.tenants.repository.TiendaRepository;
+import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
 import com.tienda.plataforma.venta.entity.Pedido;
 import com.tienda.plataforma.venta.repository.PedidoRepository;
 
@@ -51,6 +55,8 @@ class PagoCarrerasTest {
 	@Autowired
 	TiendaRepository tiendas;
 	@Autowired
+	TiendaUsuarioRepository vinculos;
+	@Autowired
 	PedidoRepository pedidos;
 	@Autowired
 	PagoRepository pagos;
@@ -60,6 +66,8 @@ class PagoCarrerasTest {
 	PasarelaPagoRepository pasarelas;
 	@Autowired
 	TiendaPasarelaRepository tiendaPasarelas;
+	@Autowired
+	PlatformTransactionManager txManager;
 
 	Tienda tienda;
 	Usuario usuario;
@@ -73,7 +81,6 @@ class PagoCarrerasTest {
 		tienda.setNombre("PC-" + tag);
 		tienda.setSlug("pc-" + tag);
 		tienda.setActiva(true);
-		tiendas.save(tienda);
 
 		usuario = new Usuario();
 		usuario.setEmail("pc-" + tag + "@example.com");
@@ -81,14 +88,31 @@ class PagoCarrerasTest {
 		usuario.setActivo(true);
 		usuario.setEmailVerificado(true);
 		usuario.setIntentosFallidos(0);
-		usuarios.save(usuario);
 
-		Cliente cliente = new Cliente();
-		cliente.setUsuario(usuario);
-		cliente.setTienda(tienda);
-		cliente.setAceptaMarketing(false);
-		cliente.setEmail(cliente.getUsuario().getEmail());
-		this.cliente = clientes.save(cliente);
+		// V22: tienda + owner en una sola TX (el trigger dispara al commit).
+		new TransactionTemplate(txManager).executeWithoutResult(s -> {
+			tiendas.save(tienda);
+			usuarios.save(usuario);
+			Usuario dueno = new Usuario();
+			dueno.setEmail("pco-" + tag + "@example.com");
+			dueno.setPasswordHash("x");
+			dueno.setActivo(true);
+			dueno.setEmailVerificado(true);
+			dueno.setIntentosFallidos(0);
+			usuarios.save(dueno);
+			TiendaUsuario v = new TiendaUsuario();
+			v.setTienda(tienda);
+			v.setUsuario(dueno);
+			v.setRolTienda(TiendaUsuario.STORE_OWNER);
+			vinculos.save(v);
+		});
+
+		Cliente c = new Cliente();
+		c.setUsuario(usuario);
+		c.setTienda(tienda);
+		c.setAceptaMarketing(false);
+		c.setEmail(c.getUsuario().getEmail());
+		cliente = clientes.save(c);
 
 		pedido = new Pedido();
 		pedido.setTienda(tienda);

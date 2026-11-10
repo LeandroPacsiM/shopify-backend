@@ -20,6 +20,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.tienda.plataforma.auth.entity.Usuario;
 import com.tienda.plataforma.auth.repository.UsuarioRepository;
@@ -39,9 +41,11 @@ import com.tienda.plataforma.shared.security.JwtService;
 import com.tienda.plataforma.tenants.entity.Cliente;
 import com.tienda.plataforma.tenants.entity.Direccion;
 import com.tienda.plataforma.tenants.entity.Tienda;
+import com.tienda.plataforma.tenants.entity.TiendaUsuario;
 import com.tienda.plataforma.tenants.repository.ClienteRepository;
 import com.tienda.plataforma.tenants.repository.DireccionRepository;
 import com.tienda.plataforma.tenants.repository.TiendaRepository;
+import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
 import com.tienda.plataforma.venta.entity.Carrito;
 import com.tienda.plataforma.venta.entity.CarritoItem;
 import com.tienda.plataforma.venta.entity.CheckoutSesion;
@@ -72,6 +76,8 @@ class SobreventaTest {
 	@Autowired
 	TiendaRepository tiendas;
 	@Autowired
+	TiendaUsuarioRepository vinculos;
+	@Autowired
 	ProductoRepository productos;
 	@Autowired
 	ProductoVarianteRepository variantes;
@@ -95,6 +101,8 @@ class SobreventaTest {
 	PedidoRepository pedidos;
 	@Autowired
 	SuscripcionRepository suscripciones;
+	@Autowired
+	PlatformTransactionManager txManager;
 
 	String jwt;
 	String slug;
@@ -107,14 +115,24 @@ class SobreventaTest {
 		String tag = UUID.randomUUID().toString().substring(0, 8);
 		Tienda tienda = nuevaTienda(tag);
 		slug = tienda.getSlug();
+		// V22: tienda + owner en una sola TX (el trigger dispara al commit).
+		new TransactionTemplate(txManager).executeWithoutResult(s -> {
+			tiendas.save(tienda);
+			Usuario dueno = nuevoUsuario("sow-" + tag);
+			TiendaUsuario v = new TiendaUsuario();
+			v.setTienda(tienda);
+			v.setUsuario(dueno);
+			v.setRolTienda(TiendaUsuario.STORE_OWNER);
+			vinculos.save(v);
+		});
+		Usuario usuario = nuevoUsuario(tag);
+		Cliente cliente = nuevoCliente(usuario, tienda);
 		Suscripcion suscripcion = new Suscripcion();
 		suscripcion.setTienda(tienda);
 		suscripcion.setPlan(Suscripcion.MENSUAL);
 		suscripcion.setEstado(Suscripcion.ACTIVA);
 		suscripcion.setPeriodoFin(java.time.Instant.now().plusSeconds(30L * 24 * 60 * 60));
 		suscripciones.save(suscripcion);
-		Usuario usuario = nuevoUsuario(tag);
-		Cliente cliente = nuevoCliente(usuario, tienda);
 		ProductoVariante variante = nuevoProducto(tag, tienda, "60.00");
 		nivelId = nuevoNivel(tag, tienda, variante, 1);
 		Direccion direccion = nuevaDireccion(cliente);
@@ -158,7 +176,7 @@ class SobreventaTest {
 		tienda.setNombre("S-" + tag);
 		tienda.setSlug("s-" + tag);
 		tienda.setActiva(true);
-		return tiendas.save(tienda);
+		return tienda;
 	}
 
 	private Usuario nuevoUsuario(String tag) {

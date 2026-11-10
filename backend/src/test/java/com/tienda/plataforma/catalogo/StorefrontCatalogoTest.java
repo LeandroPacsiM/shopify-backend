@@ -14,13 +14,17 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.tienda.plataforma.catalogo.entity.Producto;
 import com.tienda.plataforma.catalogo.entity.ProductoVariante;
 import com.tienda.plataforma.catalogo.repository.ProductoRepository;
 import com.tienda.plataforma.catalogo.repository.ProductoVarianteRepository;
 import com.tienda.plataforma.tenants.entity.Tienda;
+import com.tienda.plataforma.tenants.entity.TiendaUsuario;
 import com.tienda.plataforma.tenants.repository.TiendaRepository;
+import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
 
 /** FE-02: catálogo público por tienda, sin JWT y sin fuga entre tiendas. */
 @SpringBootTest
@@ -31,7 +35,13 @@ class StorefrontCatalogoTest {
 	@Autowired
 	MockMvc mvc;
 	@Autowired
+	PlatformTransactionManager txManager;
+	@Autowired
 	TiendaRepository tiendas;
+	@Autowired
+	TiendaUsuarioRepository vinculos;
+	@Autowired
+	com.tienda.plataforma.auth.repository.UsuarioRepository usuarios;
 	@Autowired
 	ProductoRepository productos;
 	@Autowired
@@ -44,25 +54,46 @@ class StorefrontCatalogoTest {
 	@BeforeEach
 	void fixtures() {
 		String tag = UUID.randomUUID().toString().substring(0, 8);
-		tienda = new Tienda();
-		tienda.setNombre("C-" + tag);
-		tienda.setSlug("c-" + tag);
-		tienda.setActiva(true);
-		tiendas.save(tienda);
+		// V22: todo en una sola TX (tiendas + owners; el trigger dispara al commit).
+		new TransactionTemplate(txManager).executeWithoutResult(s -> {
+			tienda = new Tienda();
+			tienda.setNombre("C-" + tag);
+			tienda.setSlug("c-" + tag);
+			tienda.setActiva(true);
+			tiendas.save(tienda);
+			duenoDe(tienda, "co-" + tag);
 
-		visible = nuevoProducto(tienda, "Camiseta " + tag, "cam-" + tag, Producto.ACTIVO);
-		nuevaVariante(visible, "SKU-V-" + tag, "50.00", true);
-		nuevaVariante(visible, "SKU-X-" + tag, "60.00", false);
+			visible = nuevoProducto(tienda, "Camiseta " + tag, "cam-" + tag, Producto.ACTIVO);
+			nuevaVariante(visible, "SKU-V-" + tag, "50.00", true);
+			nuevaVariante(visible, "SKU-X-" + tag, "60.00", false);
 
-		borrador = nuevoProducto(tienda, "Borrador " + tag, "bor-" + tag, Producto.BORRADOR);
-		nuevaVariante(borrador, "SKU-B-" + tag, "10.00", true);
+			borrador = nuevoProducto(tienda, "Borrador " + tag, "bor-" + tag, Producto.BORRADOR);
+			nuevaVariante(borrador, "SKU-B-" + tag, "10.00", true);
 
-		Tienda otra = new Tienda();
-		otra.setNombre("O-" + tag);
-		otra.setSlug("o-" + tag);
-		otra.setActiva(true);
-		tiendas.save(otra);
-		nuevoProducto(otra, "Ajeno " + tag, "aje-" + tag, Producto.ACTIVO);
+			Tienda otra = new Tienda();
+			otra.setNombre("O-" + tag);
+			otra.setSlug("o-" + tag);
+			otra.setActiva(true);
+			tiendas.save(otra);
+			duenoDe(otra, "oo-" + tag);
+			nuevoProducto(otra, "Ajeno " + tag, "aje-" + tag, Producto.ACTIVO);
+		});
+	}
+
+	private void duenoDe(Tienda tienda, String tag) {
+		com.tienda.plataforma.auth.entity.Usuario dueno =
+				new com.tienda.plataforma.auth.entity.Usuario();
+		dueno.setEmail(tag + "@example.com");
+		dueno.setPasswordHash("x");
+		dueno.setActivo(true);
+		dueno.setEmailVerificado(true);
+		dueno.setIntentosFallidos(0);
+		usuarios.save(dueno);
+		TiendaUsuario v = new TiendaUsuario();
+		v.setTienda(tienda);
+		v.setUsuario(dueno);
+		v.setRolTienda(TiendaUsuario.STORE_OWNER);
+		vinculos.save(v);
 	}
 
 	@Test

@@ -17,6 +17,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 
 import com.tienda.plataforma.auth.entity.Usuario;
@@ -33,9 +35,11 @@ import com.tienda.plataforma.shared.security.JwtService;
 import com.tienda.plataforma.tenants.entity.Cliente;
 import com.tienda.plataforma.tenants.entity.Direccion;
 import com.tienda.plataforma.tenants.entity.Tienda;
+import com.tienda.plataforma.tenants.entity.TiendaUsuario;
 import com.tienda.plataforma.tenants.repository.ClienteRepository;
 import com.tienda.plataforma.tenants.repository.DireccionRepository;
 import com.tienda.plataforma.tenants.repository.TiendaRepository;
+import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
 import com.tienda.plataforma.venta.entity.Carrito;
 import com.tienda.plataforma.venta.entity.CarritoItem;
 import com.tienda.plataforma.venta.entity.CheckoutSesion;
@@ -60,6 +64,8 @@ class CuponUltimoUsoTest {
 	@Autowired
 	MockMvc mvc;
 	@Autowired
+	PlatformTransactionManager txManager;
+	@Autowired
 	JwtService jwtService;
 	@Autowired
 	UsuarioRepository usuarios;
@@ -67,6 +73,8 @@ class CuponUltimoUsoTest {
 	ClienteRepository clientes;
 	@Autowired
 	TiendaRepository tiendas;
+	@Autowired
+	TiendaUsuarioRepository vinculos;
 	@Autowired
 	ProductoRepository productos;
 	@Autowired
@@ -103,14 +111,8 @@ class CuponUltimoUsoTest {
 		tienda.setNombre("C-" + tag);
 		tienda.setSlug("c-" + tag);
 		tienda.setActiva(true);
-		tiendas.save(tienda);
 		slug = tienda.getSlug();
-		Suscripcion suscripcion = new Suscripcion();
-		suscripcion.setTienda(tienda);
-		suscripcion.setPlan(Suscripcion.MENSUAL);
-		suscripcion.setEstado(Suscripcion.ACTIVA);
-		suscripcion.setPeriodoFin(java.time.Instant.now().plusSeconds(30L * 24 * 60 * 60));
-		suscripciones.save(suscripcion);
+		// (Suscripción más abajo, tras commitear la tienda.)
 
 		Usuario usuario = new Usuario();
 		usuario.setEmail("c-" + tag + "@example.com");
@@ -119,7 +121,32 @@ class CuponUltimoUsoTest {
 		usuario.setEmailVerificado(true);
 		usuario.setTotpHabilitado(false);
 		usuario.setIntentosFallidos(0);
-		usuarios.save(usuario);
+
+		// V22: tienda + owner en una sola TX (el trigger dispara al commit).
+		Usuario dueno = new Usuario();
+		dueno.setEmail("co2-" + tag + "@example.com");
+		dueno.setPasswordHash("x");
+		dueno.setActivo(true);
+		dueno.setEmailVerificado(true);
+		dueno.setTotpHabilitado(false);
+		dueno.setIntentosFallidos(0);
+		TiendaUsuario v = new TiendaUsuario();
+		v.setTienda(tienda);
+		v.setUsuario(dueno);
+		v.setRolTienda(TiendaUsuario.STORE_OWNER);
+		new TransactionTemplate(txManager).executeWithoutResult(s -> {
+			tiendas.save(tienda);
+			usuarios.save(usuario);
+			usuarios.save(dueno);
+			vinculos.save(v);
+		});
+
+		Suscripcion suscripcion = new Suscripcion();
+		suscripcion.setTienda(tienda);
+		suscripcion.setPlan(Suscripcion.MENSUAL);
+		suscripcion.setEstado(Suscripcion.ACTIVA);
+		suscripcion.setPeriodoFin(java.time.Instant.now().plusSeconds(30L * 24 * 60 * 60));
+		suscripciones.save(suscripcion);
 
 		Cliente cliente = new Cliente();
 		cliente.setUsuario(usuario);

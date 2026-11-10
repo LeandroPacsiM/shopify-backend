@@ -15,6 +15,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.tienda.plataforma.auth.entity.Usuario;
 import com.tienda.plataforma.auth.repository.UsuarioRepository;
@@ -27,8 +29,10 @@ import com.tienda.plataforma.pagos.repository.PasarelaPagoRepository;
 import com.tienda.plataforma.pagos.repository.TiendaPasarelaRepository;
 import com.tienda.plataforma.tenants.entity.Cliente;
 import com.tienda.plataforma.tenants.entity.Tienda;
+import com.tienda.plataforma.tenants.entity.TiendaUsuario;
 import com.tienda.plataforma.tenants.repository.ClienteRepository;
 import com.tienda.plataforma.tenants.repository.TiendaRepository;
+import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
 import com.tienda.plataforma.venta.entity.Pedido;
 import com.tienda.plataforma.venta.repository.PedidoRepository;
 
@@ -47,6 +51,8 @@ class WebhookDuplicadoTest {
 	@Autowired
 	TiendaRepository tiendas;
 	@Autowired
+	TiendaUsuarioRepository vinculos;
+	@Autowired
 	PedidoRepository pedidos;
 	@Autowired
 	PasarelaPagoRepository pasarelas;
@@ -56,6 +62,8 @@ class WebhookDuplicadoTest {
 	PagoRepository pagos;
 	@Autowired
 	PagoEventoRepository eventos;
+	@Autowired
+	PlatformTransactionManager txManager;
 
 	Long pagoId;
 
@@ -66,7 +74,6 @@ class WebhookDuplicadoTest {
 		tienda.setNombre("W-" + tag);
 		tienda.setSlug("w-" + tag);
 		tienda.setActiva(true);
-		tiendas.save(tienda);
 
 		Usuario usuario = new Usuario();
 		usuario.setEmail("w-" + tag + "@example.com");
@@ -75,7 +82,25 @@ class WebhookDuplicadoTest {
 		usuario.setEmailVerificado(true);
 		usuario.setTotpHabilitado(false);
 		usuario.setIntentosFallidos(0);
-		usuarios.save(usuario);
+
+		// V22: tienda + owner en una sola TX (el trigger dispara al commit).
+		Usuario dueno = new Usuario();
+		dueno.setEmail("wdo-" + tag + "@example.com");
+		dueno.setPasswordHash("x");
+		dueno.setActivo(true);
+		dueno.setEmailVerificado(true);
+		dueno.setTotpHabilitado(false);
+		dueno.setIntentosFallidos(0);
+		TiendaUsuario v = new TiendaUsuario();
+		v.setTienda(tienda);
+		v.setUsuario(dueno);
+		v.setRolTienda(TiendaUsuario.STORE_OWNER);
+		new TransactionTemplate(txManager).executeWithoutResult(s -> {
+			tiendas.save(tienda);
+			usuarios.save(usuario);
+			usuarios.save(dueno);
+			vinculos.save(v);
+		});
 
 		Cliente cliente = new Cliente();
 		cliente.setUsuario(usuario);

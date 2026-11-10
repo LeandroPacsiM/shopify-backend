@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.tienda.plataforma.auth.entity.Usuario;
 import com.tienda.plataforma.auth.repository.UsuarioRepository;
@@ -43,6 +45,8 @@ class PropiedadConcurrenciaTest {
 	TiendaUsuarioRepository vinculos;
 	@Autowired
 	TiendaPropiedadService propiedad;
+	@Autowired
+	PlatformTransactionManager txManager;
 
 	Tienda tienda;
 	Usuario owner;
@@ -52,14 +56,17 @@ class PropiedadConcurrenciaTest {
 	@BeforeEach
 	void fixtures() {
 		String tag = UUID.randomUUID().toString().substring(0, 8);
-		tienda = new Tienda();
-		tienda.setNombre("OWC-" + tag);
-		tienda.setSlug("owc-" + tag);
-		tienda.setActiva(true);
-		tiendas.save(tienda);
-		owner = vincular("owco-" + tag, TiendaUsuario.STORE_OWNER);
-		admin = vincular("owca-" + tag, TiendaUsuario.ADMIN);
-		operador = vincular("owcb-" + tag, TiendaUsuario.OPERADOR);
+		// V22: todo en una sola TX (tienda + owners; el trigger dispara al commit).
+		new TransactionTemplate(txManager).executeWithoutResult(s -> {
+			tienda = new Tienda();
+			tienda.setNombre("OWC-" + tag);
+			tienda.setSlug("owc-" + tag);
+			tienda.setActiva(true);
+			tiendas.save(tienda);
+			owner = vincular("owco-" + tag, TiendaUsuario.STORE_OWNER);
+			admin = vincular("owca-" + tag, TiendaUsuario.ADMIN);
+			operador = vincular("owcb-" + tag, TiendaUsuario.OPERADOR);
+		});
 	}
 
 	@Test

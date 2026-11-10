@@ -19,7 +19,9 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.tienda.plataforma.auth.entity.Usuario;
 import com.tienda.plataforma.auth.repository.UsuarioRepository;
@@ -39,7 +41,9 @@ import com.tienda.plataforma.shared.security.JwtService;
 import com.tienda.plataforma.tenants.entity.Cliente;
 import com.tienda.plataforma.tenants.entity.Direccion;
 import com.tienda.plataforma.tenants.entity.Tienda;
+import com.tienda.plataforma.tenants.entity.TiendaUsuario;
 import com.tienda.plataforma.tenants.repository.ClienteRepository;
+import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
 import com.tienda.plataforma.tenants.repository.DireccionRepository;
 import com.tienda.plataforma.tenants.repository.TiendaRepository;
 import com.tienda.plataforma.venta.entity.Carrito;
@@ -63,6 +67,8 @@ class ConfirmacionConcurrenteTest {
 	@Autowired
 	MockMvc mvc;
 	@Autowired
+	PlatformTransactionManager txManager;
+	@Autowired
 	JwtService jwtService;
 	@Autowired
 	UsuarioRepository usuarios;
@@ -70,6 +76,8 @@ class ConfirmacionConcurrenteTest {
 	ClienteRepository clientes;
 	@Autowired
 	TiendaRepository tiendas;
+	@Autowired
+	TiendaUsuarioRepository vinculos;
 	@Autowired
 	ProductoRepository productos;
 	@Autowired
@@ -102,15 +110,16 @@ class ConfirmacionConcurrenteTest {
 	Long checkoutId;
 
 	@BeforeEach
-	@Transactional
 	void fixtures() {
 		String tag = UUID.randomUUID().toString().substring(0, 8);
-		Tienda tienda = new Tienda();
-		tienda.setNombre("T-" + tag);
-		tienda.setSlug("t-" + tag);
-		tienda.setActiva(true);
-		tiendas.save(tienda);
-		slug = tienda.getSlug();
+		// V22: todo en una sola TX commiteada (los hilos no ven transacciones).
+		new TransactionTemplate(txManager).executeWithoutResult(s -> {
+			Tienda tienda = new Tienda();
+			tienda.setNombre("T-" + tag);
+			tienda.setSlug("t-" + tag);
+			tienda.setActiva(true);
+			tiendas.save(tienda);
+			slug = tienda.getSlug();
 		Suscripcion suscripcion = new Suscripcion();
 		suscripcion.setTienda(tienda);
 		suscripcion.setPlan(Suscripcion.MENSUAL);
@@ -133,6 +142,21 @@ class ConfirmacionConcurrenteTest {
 		cliente.setAceptaMarketing(false);
 		cliente.setEmail(cliente.getUsuario().getEmail());
 		clientes.save(cliente);
+
+		// V22: owner en la misma TX del fixture (commitea junto a la tienda).
+		Usuario dueno = new Usuario();
+		dueno.setEmail("to-" + tag + "@example.com");
+		dueno.setPasswordHash("x");
+		dueno.setActivo(true);
+		dueno.setEmailVerificado(true);
+		dueno.setTotpHabilitado(false);
+		dueno.setIntentosFallidos(0);
+		usuarios.save(dueno);
+		TiendaUsuario v = new TiendaUsuario();
+		v.setTienda(tienda);
+		v.setUsuario(dueno);
+		v.setRolTienda(TiendaUsuario.STORE_OWNER);
+		vinculos.save(v);
 
 		Producto producto = new Producto();
 		producto.setTienda(tienda);
@@ -214,6 +238,7 @@ class ConfirmacionConcurrenteTest {
 		checkoutId = checkout.getId();
 
 		jwt = jwtService.accesoCliente(cliente.getId(), tienda.getId());
+		});
 	}
 
 	@Test

@@ -18,6 +18,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.tienda.plataforma.auth.dto.ConfirmarTotpRequest;
 import com.tienda.plataforma.auth.dto.CredencialesRequest;
@@ -61,6 +63,8 @@ class AuthDurabilityTest {
 	TiendaUsuarioRepository tiendaUsuarios;
 	@Autowired
 	ClienteRepository clientes;
+	@Autowired
+	PlatformTransactionManager txManager;
 
 	@Test
 	void fallosDePasswordPersistenElContadorYBloqueanTrasElUmbral() {
@@ -149,7 +153,7 @@ class AuthDurabilityTest {
 	@Test
 	void resetTotpRevocaTodasLasSesionesDelUsuario() throws Exception {
 		String tag = UUID.randomUUID().toString().substring(0, 8);
-		Tienda tienda = nuevaTienda(tag);
+		Tienda tienda = nuevaTiendaConOwner(tag);
 		Usuario admin = nuevoUsuario("admin-reset-" + tag);
 		TiendaUsuario vinculo = new TiendaUsuario();
 		vinculo.setTienda(tienda);
@@ -215,7 +219,22 @@ class AuthDurabilityTest {
 		tienda.setNombre("AUTH-" + tag);
 		tienda.setSlug("auth-" + tag);
 		tienda.setActiva(true);
-		return tiendas.save(tienda);
+		return tienda;
+	}
+
+	/** V22: tienda + owner en una sola TX (el trigger dispara al commit). */
+	private Tienda nuevaTiendaConOwner(String tag) {
+		Tienda tienda = nuevaTienda(tag);
+		Usuario dueno = nuevoUsuario("owner-" + tag);
+		TiendaUsuario v = new TiendaUsuario();
+		v.setTienda(tienda);
+		v.setUsuario(dueno);
+		v.setRolTienda(TiendaUsuario.STORE_OWNER);
+		new TransactionTemplate(txManager).executeWithoutResult(s -> {
+			tiendas.save(tienda);
+			tiendaUsuarios.save(v);
+		});
+		return tienda;
 	}
 
 	private Usuario nuevoUsuario(String prefijo) {

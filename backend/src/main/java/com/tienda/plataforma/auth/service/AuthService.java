@@ -373,15 +373,18 @@ public class AuthService {
 	}
 
 	/**
-	 * RF-AUTH-06: solo el admin de la tienda puede resetear el 2FA de un
-	 * miembro staff vinculado a ella. Anula secreto y backup codes.
-	 * Objetivo B: CUSTOMER no pasa por aquí (sin TOTP).
+	 * RF-AUTH-06: solo el admin de la tienda (u owner, que incluye sus
+	 * poderes) puede resetear el 2FA de un miembro staff vinculado a ella.
+	 * Anula secreto y backup codes. Objetivo B: CUSTOMER no pasa por aquí
+	 * (sin TOTP).
 	 */
 	@Transactional
 	public void resetTotpPorAdmin(Long actorId, Long objetivoId, Long tiendaId) {
 		boolean actorEsAdmin = tiendaId != null && actorId != null
 				&& tiendaUsuarios.findByTiendaIdAndUsuarioId(tiendaId, actorId)
-						.map(v -> TiendaUsuario.ADMIN.equals(v.getRolTienda())).orElse(false);
+						.map(v -> TiendaUsuario.ADMIN.equals(v.getRolTienda())
+								|| TiendaUsuario.STORE_OWNER.equals(v.getRolTienda()))
+						.orElse(false);
 		if (!actorEsAdmin) {
 			throw new ProhibidoException("solo el admin de la tienda puede resetear 2FA");
 		}

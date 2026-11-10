@@ -23,9 +23,10 @@ import com.tienda.plataforma.tenants.repository.TiendaRepository;
 import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
 
 /**
- * Credenciales de pasarela por tienda (RF-PAY-01). Solo el `admin` de la
- * tienda (o `super_admin`) registra o rota: el secreto se cifra (AES-GCM)
- * y jamás vuelve en una respuesta. Re-registrar rota la credencial.
+ * Credenciales de pasarela por tienda (RF-PAY-01). Solo el `admin` o el
+ * `store_owner` de la tienda (o `super_admin`) registra o rota: el secreto
+ * se cifra (AES-GCM) y jamás vuelve en una respuesta. Re-registrar rota
+ * la credencial.
  */
 @Service
 public class TiendaPasarelaService {
@@ -61,7 +62,8 @@ public class TiendaPasarelaService {
 		if (!esSuper) {
 			String rol = tiendaUsuarios.findByTiendaIdAndUsuarioId(tiendaId, usuarioId)
 					.map(TiendaUsuario::getRolTienda).orElse(null);
-			if (!TiendaUsuario.ADMIN.equals(rol)) {
+			// Convención owner-incluye-admin: el OWNER conserva los poderes de admin.
+			if (!TiendaUsuario.ADMIN.equals(rol) && !TiendaUsuario.STORE_OWNER.equals(rol)) {
 				throw new ProhibidoException("solo el admin registra pasarelas");
 			}
 		}

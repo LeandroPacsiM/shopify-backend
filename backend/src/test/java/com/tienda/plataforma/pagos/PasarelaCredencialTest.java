@@ -29,7 +29,7 @@ import com.tienda.plataforma.tenants.entity.TiendaUsuario;
 import com.tienda.plataforma.tenants.repository.TiendaRepository;
 import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
 
-/** RF-PAY-01: solo el admin registra credenciales; el secreto va cifrado y no vuelve. Rollback al final. */
+/** RF-PAY-01: admin u owner registran credenciales; el secreto va cifrado y no vuelve. Rollback al final. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -53,6 +53,7 @@ class PasarelaCredencialTest {
 
 	Tienda tienda;
 	String jwtAdmin;
+	String jwtOwner;
 	String jwtOperador;
 
 	@BeforeEach
@@ -64,6 +65,7 @@ class PasarelaCredencialTest {
 		tienda.setActiva(true);
 		tiendas.save(tienda);
 		jwtAdmin = jwtVinculado("pca-" + tag, TiendaUsuario.ADMIN);
+		jwtOwner = jwtVinculado("pco2-" + tag, TiendaUsuario.STORE_OWNER);
 		jwtOperador = jwtVinculado("pco-" + tag, TiendaUsuario.OPERADOR);
 	}
 
@@ -104,6 +106,20 @@ class PasarelaCredencialTest {
 		assertEquals(1, credenciales.findByTiendaIdAndActivoTrue(tienda.getId()).size());
 		assertEquals("sk_test_rotada;whsec_y", crypto.descifrar(
 				credenciales.findByTiendaIdAndActivoTrue(tienda.getId()).get(0).getSecretoCifrado()));
+	}
+
+	@Test
+	void ownerRegistraPasarelaComoAdmin() throws Exception {
+		String cuerpo = "{\"codigo\":\"stripe\",\"clavePublica\":\"pk_test_x\","
+				+ "\"secreto\":\"sk_test_x;whsec_y\",\"modo\":\"test\"}";
+		mvc.perform(post("/api/admin/pasarelas")
+				.header("Authorization", "Bearer " + jwtOwner)
+				.header("X-Tienda-Slug", tienda.getSlug())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(cuerpo))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.codigo").value("stripe"));
+		assertEquals(1, credenciales.findByTiendaIdAndActivoTrue(tienda.getId()).size());
 	}
 
 	@Test

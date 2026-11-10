@@ -57,11 +57,13 @@ class RolSuperficiesTest {
 	Tienda tienda;
 	Tienda otraTienda;
 	Usuario admin;
+	Usuario owner;
 	Usuario operador;
 	Usuario cliente;
 	Cliente registroCliente;
 	Usuario superAdmin;
 	String jwtAdmin;
+	String jwtOwner;
 	String jwtOperador;
 	String jwtCliente;
 	String jwtSuperAdmin;
@@ -75,6 +77,11 @@ class RolSuperficiesTest {
 		admin = nuevoUsuario("rsa-" + tag);
 		vincular(admin, TiendaUsuario.ADMIN);
 		jwtAdmin = jwtService.acceso(admin.getId(), List.of("admin"));
+
+		// Convención owner-incluye-admin: el OWNER conserva esos poderes.
+		owner = nuevoUsuario("rso2-" + tag);
+		vincular(owner, TiendaUsuario.STORE_OWNER);
+		jwtOwner = jwtService.acceso(owner.getId(), List.of());
 
 		operador = nuevoUsuario("rso-" + tag);
 		vincular(operador, TiendaUsuario.OPERADOR);
@@ -109,6 +116,14 @@ class RolSuperficiesTest {
 				.header("Authorization", bearer(jwtAdmin))
 				.header("X-Tienda-Slug", tienda.getSlug()))
 				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void ownerReseteaDosFaComoAdmin() throws Exception {
+		mvc.perform(post("/api/admin/usuarios/{id}/2fa/reset", operador.getId())
+				.header("Authorization", bearer(jwtOwner))
+				.header("X-Tienda-Slug", tienda.getSlug()))
+				.andExpect(status().isNoContent());
 	}
 
 	@Test

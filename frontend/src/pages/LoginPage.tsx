@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [codigo, setCodigo] = useState('');
   const [usaBackup, setUsaBackup] = useState(false);
   const [paso, setPaso] = useState<1 | 2>(1);
+  const [enrolado, setEnrolado] = useState(true);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,7 +22,8 @@ export default function LoginPage() {
     setError(null);
     setCargando(true);
     try {
-      await loginPaso1(email, password);
+      const ch = await loginPaso1(email, password);
+      setEnrolado(ch.totpEnrolado);
       setPaso(2);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No pudimos verificar tus datos');
@@ -55,11 +57,7 @@ export default function LoginPage() {
       guardarSesion(tokens.accessToken, tokens.roles, email.trim().toLowerCase());
       nav('/tiendas/nueva', { replace: true });
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? `${err.message} (si ya activaste la verificación, escribe tu código arriba)`
-          : 'No pudimos iniciar la prueba',
-      );
+      setError(err instanceof Error ? err.message : 'No pudimos iniciar la prueba');
     } finally {
       setCargando(false);
     }
@@ -67,11 +65,13 @@ export default function LoginPage() {
 
   return (
     <AuthLayout
-      titulo={paso === 1 ? 'Inicia sesión' : 'Confirma que eres tú'}
+      titulo={paso === 1 ? 'Inicia sesión' : enrolado ? 'Confirma que eres tú' : 'Empieza tu prueba'}
       subtitulo={
         paso === 1
           ? 'Accede a tu panel para gestionar tu tienda'
-          : `Enviamos la verificación a ${email || 'tu cuenta'}`
+          : enrolado
+            ? 'Ábrelo en tu app de autenticación'
+            : 'Aún no activas la verificación en dos pasos. Entra, crea tu tienda y actívala cuando quieras.'
       }
       pie={
         <>
@@ -109,7 +109,7 @@ export default function LoginPage() {
             {cargando ? 'Verificando…' : 'Continuar'}
           </button>
         </form>
-      ) : (
+      ) : enrolado ? (
         <form onSubmit={onPaso2}>
           <label className="field">
             <span>{usaBackup ? 'Código de respaldo' : 'Código de 6 dígitos'}</span>
@@ -152,6 +152,30 @@ export default function LoginPage() {
             Seguir sin verificación (activarla después)
           </button>
         </form>
+      ) : (
+        <div>
+          <p className="muted small" style={{ marginTop: 0 }}>
+            Entrarás en modo prueba: podrás crear tu tienda y mirarla, pero para cobrar
+            primero activa la verificación desde tu panel.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            disabled={cargando}
+            onClick={onTrial}
+          >
+            {cargando ? 'Entrando…' : 'Seguir sin verificación (activarla después)'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-block"
+            style={{ marginTop: 10 }}
+            disabled={cargando}
+            onClick={() => setPaso(1)}
+          >
+            Atrás
+          </button>
+        </div>
       )}
       {error && <p className="banner banner-error">{error}</p>}
     </AuthLayout>

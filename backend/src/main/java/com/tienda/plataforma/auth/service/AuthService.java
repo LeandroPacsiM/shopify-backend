@@ -185,7 +185,7 @@ public class AuthService {
 			throw new NoAutorizadoException("credenciales inválidas");
 		}
 		exigirVerificado(usuario);
-		return new ChallengeResponse(true);
+		return new ChallengeResponse(true, Boolean.TRUE.equals(usuario.getTotpHabilitado()));
 	}
 
 	/** Paso 2: TOTP o backup code; persiste fallos y emite JWT + refresh si valida.

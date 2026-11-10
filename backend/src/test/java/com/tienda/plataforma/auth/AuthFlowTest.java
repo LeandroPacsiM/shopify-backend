@@ -75,6 +75,7 @@ class AuthFlowTest {
 		assertEquals(10, conf.backupCodes().size());
 
 		assertTrue(authService.login(new LoginRequest(email, "Secreta123")).requiereTotp());
+		assertTrue(authService.login(new LoginRequest(email, "Secreta123")).totpEnrolado());
 		assertThrows(NoAutorizadoException.class,
 				() -> authService.login(new LoginRequest(email, "mala")));
 

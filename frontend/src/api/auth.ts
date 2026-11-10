@@ -1,5 +1,6 @@
 export interface ChallengeResponse {
   requiereTotp: boolean;
+  totpEnrolado: boolean;
 }
 
 export interface TokensResponse {

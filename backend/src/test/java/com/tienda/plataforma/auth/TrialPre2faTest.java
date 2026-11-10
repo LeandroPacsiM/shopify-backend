@@ -80,8 +80,10 @@ class TrialPre2faTest {
 		usuario.setIntentosFallidos(0);
 		usuarios.save(usuario);
 
-		// 1. Login pre-2FA: challenge, sin 409.
-		assertTrue(authService.login(new LoginRequest(email, "Secreta123")).requiereTotp());
+		// 1. Login pre-2FA: challenge, sin 409 (y avisa que no hay 2FA).
+		var challenge = authService.login(new LoginRequest(email, "Secreta123"));
+		assertTrue(challenge.requiereTotp());
+		assertFalse(challenge.totpEnrolado());
 
 		// 2. Paso 2 pre-2FA: sesión limitada (sin código que verificar).
 		SesionEmitida limitada = authService.verificarTotpLogin(

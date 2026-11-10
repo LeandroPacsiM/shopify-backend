@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 
 const NAV = [
   { to: '/admin', label: 'Inicio', ico: '⌂' },
-  { to: '/tiendas/nueva', label: 'Tiendas', ico: '▦' },
+  { to: '/tiendas', label: 'Tiendas', ico: '▦' },
   { to: '/totp', label: 'Seguridad', ico: '◈' },
   { to: '/email', label: 'Correo', ico: '✉' },
   { to: '/password', label: 'Contraseña', ico: '⚿' },

@@ -483,6 +483,10 @@
 							{
 								"key": "X-Tienda-Slug",
 								"value": "{{tiendaSlug}}"
+							},
+							{
+								"key": "X-Carrito-Token",
+								"value": "{{carritoToken}}"
 							}
 						]
 					},

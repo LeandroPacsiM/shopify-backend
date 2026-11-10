@@ -223,7 +223,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\",\"codigo\":\"123456\"}"
+							"raw": "{\"email\":\"staff1@example.com\",\"password\":\"Secreta123\",\"codigo\":\"123456\"}"
 						}
 					},
 					"event": [

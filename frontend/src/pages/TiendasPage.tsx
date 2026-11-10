@@ -6,7 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 
 /** Mis tiendas: membresías del comerciante (funciona en trial). */
 export default function TiendasPage() {
-  const { accessToken } = useAuth();
+  const { accessToken, restaurando } = useAuth();
   const [tiendas, setTiendas] = useState<MiTienda[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,6 +17,7 @@ export default function TiendasPage() {
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'No se pudo cargar'));
   }, [accessToken]);
 
+  if (restaurando) return <p className="muted">Restaurando sesión…</p>;
   if (!accessToken) return <Navigate to="/login" replace />;
 
   return (

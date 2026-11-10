@@ -6,7 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import AdminShell from '../components/AdminShell';
 
 export default function CrearTiendaPage() {
-  const { accessToken, email, guardarSesion } = useAuth();
+  const { accessToken, email, restaurando, guardarSesion } = useAuth();
   const [nombre, setNombre] = useState('');
   const [slug, setSlug] = useState('');
   const [descripcion, setDescripcion] = useState('');
@@ -14,6 +14,7 @@ export default function CrearTiendaPage() {
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
 
+  if (restaurando) return <p className="muted">Restaurando sesión…</p>;
   if (!accessToken) return <Navigate to="/login" replace />;
 
   async function intentar(token: string) {

@@ -5,10 +5,11 @@ import AdminShell from '../components/AdminShell';
 import EnrolarTotp from '../components/EnrolarTotp';
 
 export default function AdminPage() {
-  const { accessToken, roles, email, mfa, salir, refrescar } = useAuth();
+  const { accessToken, roles, email, mfa, restaurando, salir, refrescar } = useAuth();
   const nav = useNavigate();
   const [msg, setMsg] = useState<string | null>(null);
 
+  if (restaurando) return <p className="muted">Restaurando sesión…</p>;
   if (!accessToken) return <Navigate to="/login" replace />;
 
   async function onRefresh() {

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { loginPaso1, loginPaso2, loginPaso2Trial } from '../api/auth';
 import { useAuth } from '../auth/AuthContext';
+import AuthLayout from '../components/AuthLayout';
 
 export default function LoginPage() {
   const nav = useNavigate();
@@ -20,11 +21,10 @@ export default function LoginPage() {
     setError(null);
     setCargando(true);
     try {
-      const ch = await loginPaso1(email, password);
-      if (ch.requiereTotp) setPaso(2);
-      else setPaso(2);
+      await loginPaso1(email, password);
+      setPaso(2);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo iniciar sesión');
+      setError(err instanceof Error ? err.message : 'No pudimos verificar tus datos');
     } finally {
       setCargando(false);
     }
@@ -41,7 +41,7 @@ export default function LoginPage() {
       guardarSesion(tokens.accessToken, tokens.roles, email.trim().toLowerCase());
       nav('/admin', { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Código inválido');
+      setError(err instanceof Error ? err.message : 'El código no coincide, intenta de nuevo');
     } finally {
       setCargando(false);
     }
@@ -57,8 +57,8 @@ export default function LoginPage() {
     } catch (err) {
       setError(
         err instanceof Error
-          ? `${err.message} (si ya tienes 2FA, mete tu código arriba)`
-          : 'No se pudo entrar en modo trial',
+          ? `${err.message} (si ya activaste la verificación, escribe tu código arriba)`
+          : 'No pudimos iniciar la prueba',
       );
     } finally {
       setCargando(false);
@@ -66,108 +66,94 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="login-root">
-      <header className="login-topbar">
-        <span className="logo">shopify</span>
-        <nav className="links">
-          <span>Solutions</span>
-          <span>Pricing</span>
-          <span>Resources</span>
-          <span>What&apos;s new</span>
-        </nav>
-        <span className="login-hint">Log in</span>
-      </header>
-
-      <main className="login-hero">
-        <div className="hero-copy">
-          <h1>Making Commerce Better for Everyone</h1>
-          <p>Solo login staff para probar tu backend. Sin landing completa.</p>
-        </div>
-
-        <section className="card">
-          <h2>{paso === 1 ? 'Log in staff' : 'Verifica tu 2FA'}</h2>
-          <p className="muted">
-            {paso === 1
-              ? 'Paso 1: email + password → POST /auth/login'
-              : 'Paso 2: código TOTP 6 dígitos → POST /auth/login/totp'}
-          </p>
-
-          {paso === 1 ? (
-            <form onSubmit={onPaso1}>
-              <label>
-                Email
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="owner@tienda.test"
-                  autoComplete="username"
-                />
-              </label>
-              <label>
-                Password
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                />
-              </label>
-              <button type="submit" disabled={cargando}>
-                {cargando ? 'Verificando…' : 'Continuar'}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={onPaso2}>
-              <p className="muted small">{email}</p>
-              <label>
-                {usaBackup ? 'Backup code (8)' : 'Código TOTP (6 dígitos)'}
-                <input
-                  required
-                  value={codigo}
-                  onChange={(e) => setCodigo(e.target.value)}
-                  placeholder={usaBackup ? 'XXXXXXXX' : '123456'}
-                  inputMode={usaBackup ? 'text' : 'numeric'}
-                  autoComplete="one-time-code"
-                />
-              </label>
-              <label className="check">
-                <input
-                  type="checkbox"
-                  checked={usaBackup}
-                  onChange={(e) => {
-                    setUsaBackup(e.target.checked);
-                    setCodigo('');
-                  }}
-                />
-                Usar backup code
-              </label>
-              <div className="row">
-                <button type="button" disabled={cargando} onClick={() => setPaso(1)}>
-                  Atrás
-                </button>
-                <button type="submit" disabled={cargando}>
-                  {cargando ? 'Entrando…' : 'Entrar'}
-                </button>
-              </div>
-              <button type="button" disabled={cargando} onClick={onTrial}>
-                Entrar en modo trial (activo mi 2FA después)
-              </button>
-            </form>
-          )}
-
-          {error && <p className="error">{error}</p>}
-          <p className="muted small">
-            Flujo trial sin Postman: <Link to="/registro">registro</Link> → <Link to="/email">email</Link>{' '}
-            → login → modo trial → <Link to="/tiendas/nueva">crear tienda</Link> →{' '}
-            <Link to="/totp">TOTP</Link> (obligatorio antes de cobrar).{' '}
-            <Link to="/password">Olvidé mi password</Link>.
-          </p>
-        </section>
-      </main>
-    </div>
+    <AuthLayout
+      titulo={paso === 1 ? 'Inicia sesión' : 'Confirma que eres tú'}
+      subtitulo={
+        paso === 1
+          ? 'Accede a tu panel para gestionar tu tienda'
+          : `Enviamos la verificación a ${email || 'tu cuenta'}`
+      }
+      pie={
+        <>
+          ¿Aún no vendes? <Link to="/registro">Crea tu cuenta gratis</Link>
+          {' · '}
+          <Link to="/password">Olvidé mi contraseña</Link>
+        </>
+      }
+    >
+      {paso === 1 ? (
+        <form onSubmit={onPaso1}>
+          <label className="field">
+            <span>Correo electrónico</span>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="tucorreo@ejemplo.com"
+              autoComplete="username"
+            />
+          </label>
+          <label className="field">
+            <span>Contraseña</span>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="current-password"
+            />
+          </label>
+          <button type="submit" className="btn btn-primary" disabled={cargando}>
+            {cargando ? 'Verificando…' : 'Continuar'}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={onPaso2}>
+          <label className="field">
+            <span>{usaBackup ? 'Código de respaldo' : 'Código de 6 dígitos'}</span>
+            <input
+              required
+              value={codigo}
+              onChange={(e) => setCodigo(e.target.value)}
+              placeholder={usaBackup ? 'Ej. PZEXGNH4' : 'Ej. 123456'}
+              inputMode={usaBackup ? 'text' : 'numeric'}
+              autoComplete="one-time-code"
+            />
+            <span className="hint">Ábrelo en tu app de autenticación.</span>
+          </label>
+          <label className="field check">
+            <input
+              type="checkbox"
+              checked={usaBackup}
+              onChange={(e) => {
+                setUsaBackup(e.target.checked);
+                setCodigo('');
+              }}
+            />
+            Usar un código de respaldo
+          </label>
+          <div className="btn-row">
+            <button type="button" className="btn" disabled={cargando} onClick={() => setPaso(1)}>
+              Atrás
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={cargando}>
+              {cargando ? 'Entrando…' : 'Entrar a mi tienda'}
+            </button>
+          </div>
+          <button
+            type="button"
+            className="btn btn-block"
+            style={{ marginTop: 10 }}
+            disabled={cargando}
+            onClick={onTrial}
+          >
+            Seguir sin verificación (activarla después)
+          </button>
+        </form>
+      )}
+      {error && <p className="banner banner-error">{error}</p>}
+    </AuthLayout>
   );
 }

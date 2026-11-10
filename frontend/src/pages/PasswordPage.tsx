@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { confirmarResetPassword, solicitarResetPassword } from '../api/auth';
+import AuthLayout from '../components/AuthLayout';
 
 export default function PasswordPage() {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ export default function PasswordPage() {
   const [nueva, setNueva] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [enviado, setEnviado] = useState(false);
 
   async function onSolicitar(e: FormEvent) {
     e.preventDefault();
@@ -16,9 +18,10 @@ export default function PasswordPage() {
     setMsg(null);
     try {
       await solicitarResetPassword(email);
-      setMsg('Solicitud enviada (genérica, no revela si el email existe). Vale 60 min.');
+      setEnviado(true);
+      setMsg('Si el correo existe, te enviamos instrucciones. El enlace vale 60 minutos.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falló la solicitud');
+      setError(err instanceof Error ? err.message : 'No pudimos procesar tu solicitud');
     }
   }
 
@@ -28,52 +31,68 @@ export default function PasswordPage() {
     setMsg(null);
     try {
       await confirmarResetPassword(token, nueva);
-      setMsg('Password fijada. Revoca todas tus sesiones: vuelve a /login.');
+      setMsg('Contraseña actualizada. Inicia sesión con la nueva.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Token inválido o expirado');
+      setError(err instanceof Error ? err.message : 'Ese enlace no es válido o venció');
     }
   }
 
   return (
-    <div className="page">
-      <nav className="topnav">
-        <Link to="/login">← Login</Link>
-        <span>Password: solicitar + confirmar</span>
-      </nav>
-      <div className="cols">
-        <section className="card">
-          <h2>POST /auth/password/solicitar</h2>
-          <form onSubmit={onSolicitar}>
-            <label>
-              Email
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-            </label>
-            <button type="submit">Solicitar reset</button>
-          </form>
-        </section>
-        <section className="card">
-          <h2>POST /auth/password/confirmar</h2>
-          <form onSubmit={onConfirmar}>
-            <label>
-              Token del correo
-              <input required value={token} onChange={(e) => setToken(e.target.value)} />
-            </label>
-            <label>
-              Nueva password (mín 8)
-              <input
-                type="password"
-                required
-                minLength={8}
-                value={nueva}
-                onChange={(e) => setNueva(e.target.value)}
-              />
-            </label>
-            <button type="submit">Fijar password</button>
-          </form>
-        </section>
-      </div>
-      {msg && <p className="ok">{msg}</p>}
-      {error && <p className="error">{error}</p>}
-    </div>
+    <AuthLayout
+      titulo="Recupera tu acceso"
+      subtitulo="Te ayudamos a volver a tu tienda en un minuto"
+      pie={
+        <>
+          ¿La recordaste? <Link to="/login">Volver a iniciar sesión</Link>
+        </>
+      }
+    >
+      {!enviado ? (
+        <form onSubmit={onSolicitar}>
+          <label className="field">
+            <span>Correo electrónico</span>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="tucorreo@ejemplo.com"
+            />
+          </label>
+          <button type="submit" className="btn btn-primary">
+            Enviar instrucciones
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={onConfirmar}>
+          <label className="field">
+            <span>Código del correo</span>
+            <input
+              required
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="Pégalo aquí"
+            />
+          </label>
+          <label className="field">
+            <span>Nueva contraseña</span>
+            <input
+              type="password"
+              required
+              minLength={8}
+              value={nueva}
+              onChange={(e) => setNueva(e.target.value)}
+              placeholder="Mínimo 8 caracteres"
+              autoComplete="new-password"
+            />
+          </label>
+          <button type="submit" className="btn btn-primary">
+            Guardar contraseña
+          </button>
+        </form>
+      )}
+      {msg && <p className="banner banner-ok">{msg}</p>}
+      {error && <p className="banner banner-error">{error}</p>}
+    </AuthLayout>
   );
 }

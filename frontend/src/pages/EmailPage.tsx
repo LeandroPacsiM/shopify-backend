@@ -1,13 +1,32 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { confirmarVerificacionEmail, solicitarVerificacionEmail } from '../api/auth';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  confirmarVerificacionEmail,
+  loginPaso2Trial,
+  solicitarVerificacionEmail,
+} from '../api/auth';
+import { useAuth } from '../auth/AuthContext';
+import AuthLayout from '../components/AuthLayout';
+
+interface EstadoLlegada {
+  email?: string;
+  password?: string;
+}
 
 export default function EmailPage() {
-  const [email, setEmail] = useState('');
+  const nav = useNavigate();
+  const { guardarSesion } = useAuth();
+  const llegada = (useLocation().state ?? {}) as EstadoLlegada;
+  const [email, setEmail] = useState(llegada.email ?? '');
+  // Solo memoria, viene del registro: permite entrar directo tras el código.
+  const [password] = useState(llegada.password ?? '');
   const [token, setToken] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Del registro el código ya va en camino: directo al código.
+  const [enviado, setEnviado] = useState(!!llegada.email);
+  const [entrando, setEntrando] = useState(false);
 
   async function onSolicitar(e: FormEvent) {
     e.preventDefault();
@@ -15,9 +34,10 @@ export default function EmailPage() {
     setMsg(null);
     try {
       await solicitarVerificacionEmail(email);
-      setMsg('Solicitud enviada (respuesta genérica). En local el código va por log; en tu demo pide el UPDATE por SQL.');
+      setEnviado(true);
+      setMsg('Si el correo existe, ya va en camino. Revisa también spam.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falló la solicitud');
+      setError(err instanceof Error ? err.message : 'No pudimos enviar el correo');
     }
   }
 
@@ -27,42 +47,75 @@ export default function EmailPage() {
     setMsg(null);
     try {
       await confirmarVerificacionEmail(token);
-      setMsg('Email verificado. Ya puedes /totp y /login.');
+      if (!password) {
+        setMsg('¡Correo activado! Ahora entra desde el login.');
+        return;
+      }
+      // Del registro: entra directo en modo trial (JWT mfa=pendiente).
+      setEntrando(true);
+      try {
+        const tokens = await loginPaso2Trial(email, password);
+        guardarSesion(tokens.accessToken, tokens.roles, email.trim().toLowerCase());
+        nav('/tiendas/nueva', { replace: true });
+      } finally {
+        setEntrando(false);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Token inválido o expirado');
+      setError(err instanceof Error ? err.message : 'Ese código no es válido o venció');
     }
   }
 
   return (
-    <div className="page">
-      <nav className="topnav">
-        <Link to="/login">← Login</Link>
-        <span>Email: solicitar + confirmar</span>
-      </nav>
-      <div className="cols">
-        <section className="card">
-          <h2>POST /auth/email/solicitar</h2>
-          <form onSubmit={onSolicitar}>
-            <label>
-              Email
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-            </label>
-            <button type="submit">Reenviar código</button>
-          </form>
-        </section>
-        <section className="card">
-          <h2>POST /auth/email/confirmar</h2>
-          <form onSubmit={onConfirmar}>
-            <label>
-              Token del correo
-              <input required value={token} onChange={(e) => setToken(e.target.value)} />
-            </label>
-            <button type="submit">Verificar email</button>
-          </form>
-        </section>
-      </div>
-      {msg && <p className="ok">{msg}</p>}
-      {error && <p className="error">{error}</p>}
-    </div>
+    <AuthLayout
+      titulo={llegada.email ? 'Ingresa tu código de verificación' : 'Activa tu correo'}
+      subtitulo={
+        llegada.email
+          ? `Te lo enviamos a ${email}. Revisa también spam.`
+          : 'Te enviamos un código para confirmar que eres tú'
+      }
+      pie={
+        <>
+          ¿Ya lo activaste? <Link to="/login">Inicia sesión</Link>
+        </>
+      }
+    >
+      {!enviado ? (
+        <form onSubmit={onSolicitar}>
+          <label className="field">
+            <span>Correo electrónico</span>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="tucorreo@ejemplo.com"
+            />
+          </label>
+          <button type="submit" className="btn btn-primary">
+            Enviar código
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={onConfirmar}>
+          <p className="muted small" style={{ marginTop: 0 }}>
+            Código enviado a <b>{email}</b>
+          </p>
+          <label className="field">
+            <span>Código de activación</span>
+            <input
+              required
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="Pégalo aquí"
+            />
+          </label>
+          <button type="submit" className="btn btn-primary" disabled={entrando}>
+            {entrando ? 'Entrando…' : 'Activar mi cuenta'}
+          </button>
+        </form>
+      )}
+      {msg && <p className="banner banner-ok">{msg}</p>}
+      {error && <p className="banner banner-error">{error}</p>}
+    </AuthLayout>
   );
 }

@@ -1,71 +1,96 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { registroAdministrativo } from '../api/auth';
+import AuthLayout from '../components/AuthLayout';
 
 export default function RegistroPage() {
+  const nav = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
-  const [ok, setOk] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setOk(null);
     setCargando(true);
     try {
-      const r = await registroAdministrativo({ email, password, nombre, apellido });
-      setOk(`Usuario ${r.usuarioId} creado (${r.email}). Siguiente: verifica tu email en /email y enrola TOTP en /totp.`);
+      await registroAdministrativo({ email, password, nombre, apellido });
+      // Al código directo: el correo de verificación ya va en camino.
+      // Password solo en memoria (router state), nunca en URL ni storage.
+      nav('/email', {
+        state: { email: email.trim().toLowerCase(), password },
+        replace: true,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo registrar');
+      setError(err instanceof Error ? err.message : 'No pudimos crear tu cuenta');
     } finally {
       setCargando(false);
     }
   }
 
   return (
-    <div className="page">
-      <nav className="topnav">
-        <Link to="/login">← Login</Link>
-        <span>Registro staff (sin permisos)</span>
-      </nav>
-      <section className="card narrow">
-        <h2>POST /auth/registro-administrativo</h2>
-        <p className="muted">Crea identidad staff sin tienda ni rol. No crea CUSTOMER.</p>
-        <form onSubmit={onSubmit}>
-          <label>
-            Email
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+    <AuthLayout
+      titulo="Crea tu cuenta"
+      subtitulo="Gratis por 3 días. Sin tarjeta, cancela cuando quieras."
+      pie={
+        <>
+          ¿Ya vendes con nosotros? <Link to="/login">Inicia sesión</Link>
+        </>
+      }
+    >
+      <form onSubmit={onSubmit}>
+          <div className="btn-row">
+            <label className="field" style={{ flex: 1 }}>
+              <span>Nombre</span>
+              <input
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                placeholder="Ana"
+                autoComplete="given-name"
+              />
+            </label>
+            <label className="field" style={{ flex: 1 }}>
+              <span>Apellido</span>
+              <input
+                value={apellido}
+                onChange={(e) => setApellido(e.target.value)}
+                placeholder="Pérez"
+                autoComplete="family-name"
+              />
+            </label>
+          </div>
+          <label className="field">
+            <span>Correo electrónico</span>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="tucorreo@ejemplo.com"
+              autoComplete="email"
+            />
           </label>
-          <label>
-            Password (mín 8)
+          <label className="field">
+            <span>Contraseña</span>
             <input
               type="password"
               required
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="Mínimo 8 caracteres"
+              autoComplete="new-password"
             />
           </label>
-          <label>
-            Nombre (opcional)
-            <input value={nombre} onChange={(e) => setNombre(e.target.value)} />
-          </label>
-          <label>
-            Apellido (opcional)
-            <input value={apellido} onChange={(e) => setApellido(e.target.value)} />
-          </label>
-          <button type="submit" disabled={cargando}>
-            {cargando ? 'Registrando…' : 'Registrar'}
+          <button type="submit" className="btn btn-primary" disabled={cargando}>
+            {cargando ? 'Creando…' : 'Crear cuenta gratis'}
           </button>
         </form>
-        {ok && <p className="ok">{ok}</p>}
-        {error && <p className="error">{error}</p>}
-      </section>
-    </div>
+      {error && <p className="banner banner-error">{error}</p>}
+    </AuthLayout>
   );
 }

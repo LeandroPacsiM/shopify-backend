@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import AdminShell from '../components/AdminShell';
 
 export default function AdminPage() {
   const { accessToken, roles, email, mfa, salir, refrescar } = useAuth();
@@ -12,7 +13,7 @@ export default function AdminPage() {
   async function onRefresh() {
     setMsg(null);
     const ok = await refrescar();
-    setMsg(ok ? 'Refresh rotado OK (cookie renovada)' : 'Refresh falló: vuelve a /login');
+    setMsg(ok ? 'Sesión renovada correctamente.' : 'La sesión caducó, vuelve a iniciar sesión.');
   }
 
   async function onSalir() {
@@ -21,63 +22,64 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="admin-root">
-      <header className="admin-topbar">
-        <span className="logo">shopify admin</span>
-        <input className="search" placeholder="Search (mock visual)" disabled />
-        <span className="user">{email ?? 'staff'}</span>
-        <button onClick={onSalir}>Salir</button>
-      </header>
-
-      <div className="admin-body">
-        <aside className="sidebar">
-          <span>Home</span>
-          <span>Orders</span>
-          <span>Products</span>
-          <span>Customers</span>
-          <span>Settings</span>
-          <em>Solo shell visual. Usuarios/roles lo lleva el otro agente.</em>
-        </aside>
-
-        <main className="admin-main">
-          <h2>Dashboard (prueba de backend)</h2>
-          <p className="muted">
-            Sesión: {mfa === 'pendiente' ? 'Trial (mfa=pendiente: lee, no escribe)' : 'Completa (mfa=completa)'}.
+    <AdminShell>
+      <div className="page-head">
+        <div>
+          <h2>Hola de nuevo 👋</h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>
+            Esto es lo que tu tienda necesita para despegar.
           </p>
-          {mfa === 'pendiente' && (
-            <p className="warn">
-              Estás en trial: puedes crear tu tienda y mirar, pero para cobrar, equipar o
-              transferir primero activa tu 2FA en <Link to="/totp">TOTP</Link>.
-            </p>
-          )}
-
-          <div className="grid">
-            <div className="stat">
-              <h3>Email</h3>
-              <p>{email}</p>
-            </div>
-            <div className="stat">
-              <h3>Roles (JWT)</h3>
-              <p>{roles.length ? roles.join(', ') : '(vacío: staff sin rol global, rol va en tienda_usuarios)'}</p>
-            </div>
-            <div className="stat">
-              <h3>Access token</h3>
-              <p className="mono">{accessToken.slice(0, 32)}…</p>
-            </div>
-          </div>
-
-          <div className="row">
-            <button onClick={onRefresh}>Probar /auth/refresh</button>
-            <Link to="/tiendas/nueva">Crear tienda</Link>
-          </div>
-          {msg && <p className="ok">{msg}</p>}
-          <p className="muted small">
-            Flujos sin Postman: <Link to="/registro">registro</Link> ·{' '}
-            <Link to="/email">email</Link> · <Link to="/totp">TOTP</Link> ·{' '}
-            <Link to="/password">password</Link> · <Link to="/tiendas/nueva">crear tienda</Link>
-          </p>
-        </main>
+        </div>
+        {mfa === 'pendiente' ? (
+          <span className="badge badge-trial">Tienda de prueba</span>
+        ) : (
+          <span className="badge badge-full">Tienda activa</span>
+        )}
       </div>
-    </div>
+
+      {mfa === 'pendiente' && (
+        <div className="card">
+          <h3>Te falta un paso para vender</h3>
+          <p className="muted small" style={{ margin: '0 0 12px' }}>
+            Activa la verificación en dos pasos y tu tienda quedará lista para cobrar.
+          </p>
+          <Link to="/totp" className="btn btn-primary" style={{ width: 'auto' }}>
+            Activar verificación
+          </Link>
+        </div>
+      )}
+
+      <div className="grid-3">
+        <div className="stat">
+          <h3>Tu correo</h3>
+          <p>{email}</p>
+        </div>
+        <div className="stat">
+          <h3>Tu rol</h3>
+          <p>
+            {roles.length
+              ? roles.join(', ')
+              : 'Propietario (los permisos viven en tu tienda)'}
+          </p>
+        </div>
+        <div className="stat">
+          <h3>Estado de sesión</h3>
+          <p>{mfa === 'pendiente' ? 'Prueba — solo lectura' : 'Completa — acceso total'}</p>
+        </div>
+      </div>
+
+      <div className="card">
+        <h3>Mantenimiento de sesión</h3>
+        <div className="btn-row" style={{ maxWidth: 420 }}>
+          <button className="btn" onClick={onRefresh}>
+            Renovar sesión
+          </button>
+          <button className="btn" onClick={onSalir}>
+            Cerrar sesión
+          </button>
+        </div>
+        {msg && <p className="banner banner-ok">{msg}</p>}
+      </div>
+    </AdminShell>
   );
 }

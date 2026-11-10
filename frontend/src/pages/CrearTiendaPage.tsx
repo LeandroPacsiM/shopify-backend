@@ -3,14 +3,16 @@ import type { FormEvent } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { crearTienda, refreshSesion } from '../api/auth';
 import { useAuth } from '../auth/AuthContext';
+import AdminShell from '../components/AdminShell';
 
 export default function CrearTiendaPage() {
-  const { accessToken, email, mfa, guardarSesion } = useAuth();
-  const [nombre, setNombre] = useState('Mi tienda demo');
-  const [slug, setSlug] = useState('mi-tienda-demo');
+  const { accessToken, email, guardarSesion } = useAuth();
+  const [nombre, setNombre] = useState('');
+  const [slug, setSlug] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [ok, setOk] = useState<string | null>(null);
+  const [creada, setCreada] = useState<{ id: number; nombre: string; slug: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(false);
 
   if (!accessToken) return <Navigate to="/login" replace />;
 
@@ -25,58 +27,91 @@ export default function CrearTiendaPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setOk(null);
+    setCargando(true);
     try {
       const t = await intentar(accessToken as string);
-      setOk(`Tienda ${t.id} creada: ${t.nombre} (${t.slug}). Quedaste STORE_OWNER. Usa X-Tienda-Slug: ${t.slug} en /api/admin/*`);
+      setCreada({ id: t.id, nombre: t.nombre, slug: t.slug });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'No se pudo crear';
+      const msg = err instanceof Error ? err.message : 'No pudimos crear tu tienda';
       if (/401|sesión|token/i.test(msg)) {
         try {
           const r = await refreshSesion();
           guardarSesion(r.accessToken, r.roles, email ?? '');
           const t = await intentar(r.accessToken);
-          setOk(`Tienda ${t.id} creada tras refresh: ${t.nombre} (${t.slug}).`);
+          setCreada({ id: t.id, nombre: t.nombre, slug: t.slug });
           return;
         } catch (err2) {
-          setError(err2 instanceof Error ? err2.message : 'No se pudo crear');
+          setError(err2 instanceof Error ? err2.message : 'Tu sesión venció, entra de nuevo');
           return;
         }
       }
-      setError(msg);
+      setError(msg === 'slug en uso' ? 'Ese nombre de tienda ya existe, prueba otro.' : msg);
+    } finally {
+      setCargando(false);
     }
   }
 
   return (
-    <div className="page">
-      <nav className="topnav">
-        <Link to="/admin">← Admin</Link>
-        <span>Crear tienda ({email})</span>
-      </nav>
-      <section className="card narrow">
-        <h2>POST /auth/tiendas</h2>
-        <p className="muted">Requiere login. El creador queda STORE_OWNER, suscripción pendiente.</p>
-        {mfa === 'pendiente' && (
-          <p className="muted">Vas con sesión trial (mfa=pendiente): crear tienda está permitido.</p>
-        )}
-        <form onSubmit={onSubmit}>
-          <label>
-            Nombre
-            <input required value={nombre} onChange={(e) => setNombre(e.target.value)} />
-          </label>
-          <label>
-            Slug [a-z0-9-]
-            <input required value={slug} onChange={(e) => setSlug(e.target.value)} />
-          </label>
-          <label>
-            Descripción (opcional)
-            <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
-          </label>
-          <button type="submit">Crear tienda</button>
-        </form>
-        {ok && <p className="ok">{ok}</p>}
-        {error && <p className="error">{error}</p>}
-      </section>
-    </div>
+    <AdminShell>
+      <div className="page-head">
+        <div>
+          <h2>Crea tu tienda</h2>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>
+            Empieza tu prueba gratis. Serás el propietario.
+          </p>
+        </div>
+      </div>
+
+      {creada ? (
+        <div className="card">
+          <h3>¡{creada.nombre} ya existe! 🎉</h3>
+          <p className="muted small">
+            Tu dirección será <b>{creada.slug}.mitienda.com</b>. Por ahora tu tienda está en
+            prueba: actívala para empezar a cobrar.
+          </p>
+          <div className="btn-row" style={{ maxWidth: 420 }}>
+            <Link to="/admin" className="btn btn-primary" style={{ flex: 1, textAlign: 'center' }}>
+              Ir a mi panel
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="card" style={{ maxWidth: 560 }}>
+          <form onSubmit={onSubmit}>
+            <label className="field">
+              <span>¿Cómo se llama tu negocio?</span>
+              <input
+                required
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                placeholder="Ej. Café Andino"
+              />
+            </label>
+            <label className="field">
+              <span>Elige su dirección</span>
+              <input
+                required
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder="Ej. cafe-andino"
+              />
+              <span className="hint">Solo minúsculas, números y guiones. Así la verán tus clientes.</span>
+            </label>
+            <label className="field">
+              <span>¿Qué vendes? (opcional)</span>
+              <input
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+                placeholder="Ej. Café de especialidad"
+              />
+            </label>
+            <button type="submit" className="btn btn-primary" disabled={cargando}>
+              {cargando ? 'Creando…' : 'Crear mi tienda'}
+            </button>
+          </form>
+          {error && <p className="banner banner-error">{error}</p>}
+        </div>
+      )}
+    </AdminShell>
   );
 }

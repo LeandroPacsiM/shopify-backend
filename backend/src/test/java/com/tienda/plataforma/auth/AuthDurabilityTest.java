@@ -33,6 +33,7 @@ import com.tienda.plataforma.auth.service.AuthService;
 import com.tienda.plataforma.auth.service.TotpService;
 import com.tienda.plataforma.shared.exception.NoAutorizadoException;
 import com.tienda.plataforma.shared.security.CryptoService;
+import com.tienda.plataforma.shared.security.JwtService;
 import com.tienda.plataforma.tenants.entity.Cliente;
 import com.tienda.plataforma.tenants.entity.Tienda;
 import com.tienda.plataforma.tenants.entity.TiendaUsuario;
@@ -55,6 +56,8 @@ class AuthDurabilityTest {
 	PasswordEncoder passwordEncoder;
 	@Autowired
 	CryptoService crypto;
+	@Autowired
+	JwtService jwtService;
 	@Autowired
 	TotpService totp;
 	@Autowired
@@ -200,17 +203,20 @@ class AuthDurabilityTest {
 	}
 
 	@Test
-	void refreshNoRotaUnaSesionSiTotpFueDeshabilitadoPorOtroCamino() throws Exception {
+	void refreshRotaYReemiteLimitadaSiTotpSigueDeshabilitado() throws Exception {
 		Usuario usuario = nuevoUsuario("refresh-totp-off-");
 		UUID familia = UUID.randomUUID();
 		String refresh = "refresh-totp-off-" + UUID.randomUUID();
 		sesiones.save(nuevaSesion(usuario, familia, refresh));
 
-		assertThrows(NoAutorizadoException.class, () -> authService.refresh(refresh, null, null));
+		// ADR-017: sin 2FA no se revoca; se rota y se re-emite limitada.
+		AuthService.SesionEmitida emitida = authService.refresh(refresh, null, null);
+		assertTrue(jwtService.esMfaPendiente(jwtService.verificarStaff(emitida.accessToken())));
 
-		Sesion invalidada = sesiones.findByTokenHash(hash(refresh)).orElseThrow();
-		assertNotNull(invalidada.getRevocadoEn());
-		assertEquals("totp_deshabilitado", invalidada.getMotivoRevocacion());
+		Sesion anterior = sesiones.findByTokenHash(hash(refresh)).orElseThrow();
+		assertNotNull(anterior.getRevocadoEn());
+		assertEquals("rotacion", anterior.getMotivoRevocacion());
+		assertNotNull(anterior.getReemplazadoPor());
 	}
 
 	private Tienda nuevaTienda(String tag) {

@@ -174,7 +174,9 @@ public class AuthService {
 		return new TotpConfirmadoResponse(true, planos);
 	}
 
-	/** Paso 1: password. Persiste el contador aunque el intento responda 401. */
+	/** Paso 1: password. Persiste el contador aunque el intento responda 401.
+	 * ADR-017: sin enrolar también responde challenge (`requiereTotp=true`,
+	 * señal de enrolar primero); la sesión limitada sale en el paso 2. */
 	@Transactional(noRollbackFor = NoAutorizadoException.class)
 	public ChallengeResponse login(LoginRequest req) {
 		Usuario usuario = buscarVigente(req.email());
@@ -183,13 +185,13 @@ public class AuthService {
 			throw new NoAutorizadoException("credenciales inválidas");
 		}
 		exigirVerificado(usuario);
-		if (!Boolean.TRUE.equals(usuario.getTotpHabilitado())) {
-			throw new ConflictoException("debe enrolar 2FA primero");
-		}
 		return new ChallengeResponse(true);
 	}
 
-	/** Paso 2: TOTP o backup code; persiste fallos y emite JWT + refresh si valida. */
+	/** Paso 2: TOTP o backup code; persiste fallos y emite JWT + refresh si valida.
+	 * ADR-017: sin enrolar no hay qué verificar — password + email verificado
+	 * bastan para sesión limitada (`mfa=pendiente`, la emite `emitirSesion`
+	 * por el flag); el deny-list la contiene hasta enrolar. */
 	@Transactional(noRollbackFor = NoAutorizadoException.class)
 	public SesionEmitida verificarTotpLogin(TotpLoginRequest req, String ip, String agente) {
 		Usuario usuario = buscarVigente(req.email());
@@ -199,7 +201,10 @@ public class AuthService {
 		}
 		exigirVerificado(usuario);
 		if (!Boolean.TRUE.equals(usuario.getTotpHabilitado())) {
-			throw new ConflictoException("debe enrolar 2FA primero");
+			usuario.setIntentosFallidos(0);
+			usuario.setUltimoAcceso(Instant.now());
+			usuarios.save(usuario);
+			return emitirSesion(usuario, UUID.randomUUID(), ip, agente);
 		}
 		boolean ok;
 		if (req.backupCode() != null && !req.backupCode().isBlank()) {
@@ -220,7 +225,10 @@ public class AuthService {
 		return emitirSesion(usuario, UUID.randomUUID(), ip, agente);
 	}
 
-	/** Reusar refresh revoca la familia; el 401 no debe revertir esa revocación. */
+	/** Reusar refresh revoca la familia; el 401 no debe revertir esa revocación.
+	 * ADR-017: sin 2FA la sesión se re-emite limitada, no se revoca (el
+	 * deny-list la contiene). El reset por admin ya revocó todo antes
+	 * (`reset_totp`), así que aquí no queda ninguna completa que matar. */
 	@Transactional(noRollbackFor = NoAutorizadoException.class)
 	public SesionEmitida refresh(String refreshPlano, String ip, String agente) {
 		Sesion sesion = sesiones.findByTokenHash(sha256(refreshPlano))
@@ -230,10 +238,6 @@ public class AuthService {
 			throw new NoAutorizadoException("sesión inválida");
 		}
 		if (!sesion.vigente(Instant.now())) {
-			throw new NoAutorizadoException("sesión inválida");
-		}
-		if (!Boolean.TRUE.equals(sesion.getUsuario().getTotpHabilitado())) {
-			revocarFamilia(sesion.getFamiliaId(), "totp_deshabilitado");
 			throw new NoAutorizadoException("sesión inválida");
 		}
 		SesionEmitida nueva = emitirSesion(sesion.getUsuario(), sesion.getFamiliaId(), ip, agente);
@@ -413,7 +417,11 @@ public class AuthService {
 		sesion.setCreadoEn(Instant.now());
 		sesiones.save(sesion);
 		List<String> roles = usuarioRoles.nombresDeRoles(usuario.getId());
-		return new SesionEmitida(jwtService.acceso(usuario.getId(), roles), plano, roles);
+		// ADR-017: el flag decide el JWT; sin enrolar sale limitado.
+		String access = Boolean.TRUE.equals(usuario.getTotpHabilitado())
+				? jwtService.acceso(usuario.getId(), roles)
+				: jwtService.accesoLimitado(usuario.getId());
+		return new SesionEmitida(access, plano, roles);
 	}
 
 	private void revocarFamilia(UUID familia, String motivo) {

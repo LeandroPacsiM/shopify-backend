@@ -166,7 +166,7 @@ class DescuentoCombinadoTest {
 		assertEquals(BigDecimal.ZERO.setScale(2), checkout.envioTotal());
 		assertEquals(new BigDecimal("175.00"), checkout.total());
 
-		var pedido = pedidos.confirmar(usuario.getId(), tienda.getId(), checkout.id());
+		var pedido = pedidos.confirmar(cliente.getId(), tienda.getId(), checkout.id());
 		assertEquals(checkout.total(), pedido.total());
 		assertEquals(new BigDecimal("25.00"), pedidoDescuentoTotal(pedido.id()));
 		assertEquals(3, pedidoDescuentos.findAll().stream()
@@ -222,7 +222,7 @@ class DescuentoCombinadoTest {
 		carritoItems.save(item);
 		var req = new CrearCheckoutRequest(carrito.getToken(), direccion.getId(), direccion.getId(),
 				metodo.getId(), null, codigos, null, null, null);
-		return checkouts.crear(usuario.getId(), tienda.getSlug(), req);
+		return checkouts.crear(cliente.getId(), tienda.getSlug(), req);
 	}
 
 	private BigDecimal pedidoDescuentoTotal(Long pedidoId) {

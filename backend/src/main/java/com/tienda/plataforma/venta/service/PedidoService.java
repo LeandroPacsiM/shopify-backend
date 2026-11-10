@@ -99,18 +99,18 @@ public class PedidoService {
 		this.facturacion = facturacion;
 	}
 
-	public CheckoutResponse crearCheckout(Long usuarioId, String slug, CrearCheckoutRequest req) {
-		return checkoutService.crear(usuarioId, slug, req);
+	public CheckoutResponse crearCheckout(Long clienteId, String slug, CrearCheckoutRequest req) {
+		return checkoutService.crear(clienteId, slug, req);
 	}
 
 	@Transactional
-	public PedidoResponse confirmar(Long usuarioId, Long tiendaId, Long checkoutId) {
+	public PedidoResponse confirmar(Long clienteId, Long tiendaId, Long checkoutId) {
 		CheckoutSesion checkout = checkouts.findConBloqueoById(checkoutId)
 				.orElseThrow(() -> new NoEncontradoException("checkout"));
 		Carrito carrito = checkout.getCarrito();
 		if (tiendaId == null || !checkout.getTienda().getId().equals(tiendaId)
 				|| !checkout.getCliente().getTienda().getId().equals(tiendaId)
-				|| !checkout.getCliente().getUsuario().getId().equals(usuarioId)
+				|| !checkout.getCliente().getId().equals(clienteId)
 				|| !carrito.getTienda().getId().equals(tiendaId)
 				|| carrito.getCliente() == null
 				|| !carrito.getCliente().getId().equals(checkout.getCliente().getId())

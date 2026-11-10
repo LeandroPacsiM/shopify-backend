@@ -75,19 +75,19 @@ class JwtAislamientoTest {
 	}
 
 	@Test
-	void customerNoAbreAdminYStaffLegacySigueEnCuenta() throws Exception {
+	void customerAbreCuentaPeroNoAdminYStaffNoAbreCuenta() throws Exception {
 		mvc.perform(get("/api/admin/productos")
 				.header("Authorization", "Bearer " + jwtCustomer)
 				.header("X-Tienda-Slug", tienda.getSlug()))
 				.andExpect(status().isForbidden());
-		// Pre-F3 el JWT CUSTOMER aún no resuelve cuenta (cutover pendiente).
+		// F3: el JWT CUSTOMER resuelve cuenta en su tienda.
 		mvc.perform(get("/api/storefront/" + tienda.getSlug() + "/cuenta/perfil")
 				.header("Authorization", "Bearer " + jwtCustomer))
-				.andExpect(status().isForbidden());
-		// El mundo staff no se rompió: comprador legacy entra a su cuenta.
+				.andExpect(status().isOk());
+		// Un JWT staff (aunque sea del comprador legacy) ya no abre cuenta.
 		mvc.perform(get("/api/storefront/" + tienda.getSlug() + "/cuenta/perfil")
 				.header("Authorization", "Bearer " + jwtStaffComprador))
-				.andExpect(status().isOk());
+				.andExpect(status().isForbidden());
 	}
 
 	@Test

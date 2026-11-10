@@ -114,6 +114,12 @@ class AuditoriaTiendaTest {
 		cliente.setAceptaMarketing(false);
 		cliente.setEmail(cliente.getUsuario().getEmail());
 		clientes.save(cliente);
+		// F3: el reseteo exige membresía staff.
+		TiendaUsuario vc = new TiendaUsuario();
+		vc.setTienda(tienda);
+		vc.setUsuario(clienteUsuario);
+		vc.setRolTienda(TiendaUsuario.OPERADOR);
+		vinculos.save(vc);
 
 		pendiente = nuevoPedido("AU-" + tag + "-1", Pedido.PENDIENTE, cliente);
 		pagado = nuevoPedido("AU-" + tag + "-2", Pedido.PAGADO, cliente);

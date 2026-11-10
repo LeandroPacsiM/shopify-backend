@@ -95,6 +95,7 @@ public class SecurityConfig {
 								"/api/storefront/*/colecciones/**", "/api/storefront/*/etiquetas").permitAll()
 						.requestMatchers("/api/storefront/*/carrito", "/api/storefront/*/carrito/**").permitAll()
 						.requestMatchers("/api/ops/**").hasAuthority("ROLE_super_admin")
+						.requestMatchers("/api/admin/tienda/propietario").access(rolesTienda.ownerDeTienda())
 						.requestMatchers("/api/admin/usuarios", "/api/admin/usuarios/**",
 								"/api/admin/pasarelas", "/api/admin/pasarelas/**",
 								"/api/admin/facturacion", "/api/admin/facturacion/**")

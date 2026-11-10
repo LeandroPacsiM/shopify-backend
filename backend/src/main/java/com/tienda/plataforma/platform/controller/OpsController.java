@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,6 +27,7 @@ import com.tienda.plataforma.platform.facturacion.repository.SuscripcionReposito
 import com.tienda.plataforma.shared.exception.NoEncontradoException;
 import com.tienda.plataforma.tenants.entity.Tienda;
 import com.tienda.plataforma.tenants.repository.TiendaRepository;
+import com.tienda.plataforma.tenants.service.TiendaPropiedadService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -57,17 +59,20 @@ public class OpsController {
 	private final RegistroAuditoriaRepository auditoria;
 	private final SuscripcionRepository suscripciones;
 	private final UsuarioRepository usuarios;
+	private final TiendaPropiedadService propiedad;
 	private final HttpServletRequest request;
 	private final List<String> ipsPermitidas;
 
 	public OpsController(TiendaRepository tiendas, RegistroAuditoriaRepository auditoria,
 			SuscripcionRepository suscripciones, UsuarioRepository usuarios,
+			TiendaPropiedadService propiedad,
 			HttpServletRequest request,
 			@Value("${app.ops.ips-permitidas:}") String ipsPermitidas) {
 		this.tiendas = tiendas;
 		this.auditoria = auditoria;
 		this.suscripciones = suscripciones;
 		this.usuarios = usuarios;
+		this.propiedad = propiedad;
 		this.request = request;
 		this.ipsPermitidas = Arrays.stream(ipsPermitidas.split(",")).map(String::trim)
 				.filter(s -> !s.isEmpty()).toList();
@@ -115,6 +120,20 @@ public class OpsController {
 		return auditoria.findAll(paginacion(page, size, "creadoEn")).map(a -> new AuditoriaResumen(a.getId(),
 				a.getUsuario() == null ? null : a.getUsuario().getId(),
 				a.getEntidad(), a.getEntidadId(), a.getAccion(), a.getCreadoEn()));
+	}
+
+	public record ConfirmarOwnerRequest(Long usuarioId) {
+	}
+
+	@PatchMapping("/tiendas/{id}/propietario")
+	@Operation(summary = "Confirma el STORE_OWNER de una tienda existente (verificación fuera de banda, D5)")
+	public TiendaResumen confirmarOwner(@PathVariable Long id,
+			@jakarta.validation.Valid @RequestBody ConfirmarOwnerRequest req) {
+		Long actor = superAdmin();
+		Tienda tienda = tiendas.findById(id).orElseThrow(() -> new NoEncontradoException("tienda"));
+		propiedad.confirmar(id, req.usuarioId());
+		auditar("tiendas", id, "owner_confirmado", actor);
+		return resumir(tienda);
 	}
 
 	private PageRequest paginacion(Integer pagina, Integer tamano, String ordenarPor) {

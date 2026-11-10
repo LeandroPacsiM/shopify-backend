@@ -21,6 +21,7 @@ import com.tienda.plataforma.catalogo.repository.ProductoRepository;
 import com.tienda.plataforma.shared.exception.ConflictoException;
 import com.tienda.plataforma.shared.exception.NoAutorizadoException;
 import com.tienda.plataforma.shared.exception.NoEncontradoException;
+import com.tienda.plataforma.shared.security.ClientePrincipal;
 import com.tienda.plataforma.tenants.entity.Cliente;
 import com.tienda.plataforma.tenants.entity.Direccion;
 import com.tienda.plataforma.tenants.entity.Tienda;
@@ -242,16 +243,16 @@ public class CuentaController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void anonimizar(@PathVariable String slug) {
 		Cliente cliente = clienteDe(slug);
-		privacidad.anonimizarCuenta(cliente.getUsuario().getId(), slug);
+		privacidad.anonimizarCliente(cliente.getId(), slug);
 	}
 
 	private Cliente clienteDe(String slug) {
 		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-		if (!(principal instanceof Long usuarioId)) {
-			throw new NoAutorizadoException("sin autenticación");
+		if (!(principal instanceof ClientePrincipal p)) {
+			throw new NoAutorizadoException("se requiere sesión CUSTOMER");
 		}
 		Tienda tienda = tiendas.findBySlug(slug).orElseThrow(() -> new NoEncontradoException("tienda"));
-		Cliente cliente = clientes.findByUsuarioId(usuarioId)
+		Cliente cliente = clientes.findById(p.clienteId())
 				.orElseThrow(() -> new NoEncontradoException("cliente"));
 		if (!cliente.getTienda().getId().equals(tienda.getId())) {
 			throw new NoEncontradoException("tienda");

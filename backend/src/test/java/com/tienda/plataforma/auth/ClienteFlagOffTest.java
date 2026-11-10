@@ -14,8 +14,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Flag off (defecto): el ámbito CUSTOMER es inerte (404). */
-@SpringBootTest
+/** Flag off explícito: el ámbito CUSTOMER es inerte (404). */
+@SpringBootTest(properties = "auth.customer.enabled=false")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional

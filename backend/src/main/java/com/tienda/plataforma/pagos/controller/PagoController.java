@@ -11,6 +11,7 @@ import com.tienda.plataforma.pagos.dto.CrearIntentoRequest;
 import com.tienda.plataforma.pagos.dto.PagoResponse;
 import com.tienda.plataforma.pagos.service.PagoService;
 import com.tienda.plataforma.shared.exception.NoAutorizadoException;
+import com.tienda.plataforma.shared.security.ClientePrincipal;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,9 +33,9 @@ public class PagoController {
 	@Operation(summary = "Crea un intento de cobro por el saldo restante")
 	public PagoResponse crear(@PathVariable Long pedidoId, @Valid @RequestBody CrearIntentoRequest req) {
 		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-		if (!(principal instanceof Long usuarioId)) {
-			throw new NoAutorizadoException("sin autenticación");
+		if (!(principal instanceof ClientePrincipal p)) {
+			throw new NoAutorizadoException("se requiere sesión CUSTOMER");
 		}
-		return pagoService.crearIntento(usuarioId, pedidoId, req.pasarela(), req.idempotencia());
+		return pagoService.crearIntento(p.clienteId(), pedidoId, req.pasarela(), req.idempotencia());
 	}
 }

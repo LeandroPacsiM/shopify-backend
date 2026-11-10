@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tienda.plataforma.shared.exception.NoAutorizadoException;
 import com.tienda.plataforma.shared.exception.ProhibidoException;
+import com.tienda.plataforma.shared.security.ClientePrincipal;
 import com.tienda.plataforma.shared.security.TenantContext;
 import com.tienda.plataforma.tenants.entity.Tienda;
 import com.tienda.plataforma.venta.dto.CheckoutResponse;
@@ -35,13 +36,13 @@ public class CheckoutController {
 	@PostMapping("/orden")
 	@Operation(summary = "Crea el checkout congelando totales")
 	public CheckoutResponse crear(@Valid @RequestBody CrearCheckoutRequest req) {
-		return pedidoService.crearCheckout(usuarioId(), tiendaActual().getSlug(), req);
+		return pedidoService.crearCheckout(clienteId(), tiendaActual().getSlug(), req);
 	}
 
 	@PostMapping("/{id}/confirmar")
 	@Operation(summary = "Confirma el pedido: snapshots, stock, historial (idempotente por checkout)")
 	public PedidoResponse confirmar(@PathVariable Long id) {
-		return pedidoService.confirmar(usuarioId(), tiendaActual().getId(), id);
+		return pedidoService.confirmar(clienteId(), tiendaActual().getId(), id);
 	}
 
 	private Tienda tiendaActual() {
@@ -52,11 +53,11 @@ public class CheckoutController {
 		return tienda;
 	}
 
-	private Long usuarioId() {
+	private Long clienteId() {
 		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-		if (!(principal instanceof Long id)) {
-			throw new NoAutorizadoException("sin autenticación");
+		if (!(principal instanceof ClientePrincipal p)) {
+			throw new NoAutorizadoException("sin autenticación CUSTOMER");
 		}
-		return id;
+		return p.clienteId();
 	}
 }

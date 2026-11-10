@@ -8,22 +8,19 @@ import org.springframework.stereotype.Component;
 
 import com.tienda.plataforma.tenants.entity.Tienda;
 import com.tienda.plataforma.tenants.entity.TiendaUsuario;
-import com.tienda.plataforma.tenants.repository.ClienteRepository;
 import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
 
-/** Autorización de superficies a partir del rol vigente en el tenant del request (V12). */
+/** Autorización de superficies a partir del rol vigente en el tenant del request (V12 + ADR-016). */
 @Component
 public class TenantRoleAuthorizationManager {
 
 	private final TiendaUsuarioRepository tiendaUsuarios;
-	private final ClienteRepository clientes;
 
-	public TenantRoleAuthorizationManager(TiendaUsuarioRepository tiendaUsuarios, ClienteRepository clientes) {
+	public TenantRoleAuthorizationManager(TiendaUsuarioRepository tiendaUsuarios) {
 		this.tiendaUsuarios = tiendaUsuarios;
-		this.clientes = clientes;
 	}
 
-	/** El rol admin/operador vive en tienda_usuarios, no en el JWT global. */
+	/** El rol admin/operador vive en tienda_usuarios, no en el JWT global. El OWNER conserva todos los poderes de admin. */
 	public AuthorizationManager<RequestAuthorizationContext> adminOOperadorDeTienda() {
 		return (autenticacion, contexto) -> {
 			Authentication actor = autenticacion.get();
@@ -33,14 +30,15 @@ public class TenantRoleAuthorizationManager {
 				return new AuthorizationDecision(false);
 			}
 			boolean autorizado = tiendaUsuarios.findByTiendaIdAndUsuarioId(tienda.getId(), usuarioId)
-					.map(v -> TiendaUsuario.ADMIN.equals(v.getRolTienda())
+					.map(v -> TiendaUsuario.STORE_OWNER.equals(v.getRolTienda())
+							|| TiendaUsuario.ADMIN.equals(v.getRolTienda())
 							|| TiendaUsuario.OPERADOR.equals(v.getRolTienda()))
 					.orElse(false);
 			return new AuthorizationDecision(autorizado);
 		};
 	}
 
-	/** Acciones reservadas al propietario/admin, por ejemplo resetear el 2FA de la tienda. */
+	/** Acciones reservadas al admin (y al OWNER, que lo incluye todo), por ejemplo resetear el 2FA. */
 	public AuthorizationManager<RequestAuthorizationContext> adminDeTienda() {
 		return (autenticacion, contexto) -> {
 			Authentication actor = autenticacion.get();
@@ -50,31 +48,44 @@ public class TenantRoleAuthorizationManager {
 				return new AuthorizationDecision(false);
 			}
 			boolean autorizado = tiendaUsuarios.findByTiendaIdAndUsuarioId(tienda.getId(), usuarioId)
-					.map(v -> TiendaUsuario.ADMIN.equals(v.getRolTienda()))
+					.map(v -> TiendaUsuario.STORE_OWNER.equals(v.getRolTienda())
+							|| TiendaUsuario.ADMIN.equals(v.getRolTienda()))
 					.orElse(false);
 			return new AuthorizationDecision(autorizado);
 		};
 	}
 
-	/** El cliente se deriva de clientes.tienda_id, no de una autoridad global del JWT. */
-	public AuthorizationManager<RequestAuthorizationContext> clienteDeTienda() {
+	/** Acciones reservadas al STORE_OWNER, p. ej. transferir la propiedad. */
+	public AuthorizationManager<RequestAuthorizationContext> ownerDeTienda() {
 		return (autenticacion, contexto) -> {
 			Authentication actor = autenticacion.get();
 			Long usuarioId = usuarioId(actor);
 			Tienda tienda = TenantContext.actual();
-			if (usuarioId == null || tienda == null || !tieneAutoridad(actor, "ROLE_cliente")
-					|| esSuperAdmin(actor) || tieneAutoridad(actor, "ROLE_admin")
-					|| tieneAutoridad(actor, "ROLE_operador")) {
+			if (usuarioId == null || tienda == null || esSuperAdmin(actor)) {
 				return new AuthorizationDecision(false);
 			}
-
-			// Un miembro admin/operador de esta tienda no puede comprar en su propia tienda.
-			if (tiendaUsuarios.findByTiendaIdAndUsuarioId(tienda.getId(), usuarioId).isPresent()) {
-				return new AuthorizationDecision(false);
-			}
-			boolean autorizado = clientes.findByUsuarioId(usuarioId)
-					.map(c -> c.getTienda().getId().equals(tienda.getId()))
+			boolean autorizado = tiendaUsuarios.findByTiendaIdAndUsuarioId(tienda.getId(), usuarioId)
+					.map(v -> TiendaUsuario.STORE_OWNER.equals(v.getRolTienda()))
 					.orElse(false);
+			return new AuthorizationDecision(autorizado);
+		};
+	}
+
+	/**
+	 * CUSTOMER por claim firmado (objetivo B, ADR-016): solo acepta
+	 * `ClientePrincipal` cuya tienda coincide con el tenant. Un JWT staff
+	 * (principal `Long`) jamás autoriza aquí, y viceversa.
+	 */
+	public AuthorizationManager<RequestAuthorizationContext> clienteDeTienda() {
+		return (autenticacion, contexto) -> {
+			Authentication actor = autenticacion.get();
+			if (actor == null) {
+				return new AuthorizationDecision(false);
+			}
+			Tienda tienda = TenantContext.actual();
+			boolean autorizado = tienda != null
+					&& actor.getPrincipal() instanceof ClientePrincipal p
+					&& p.tiendaId().equals(tienda.getId());
 			return new AuthorizationDecision(autorizado);
 		};
 	}

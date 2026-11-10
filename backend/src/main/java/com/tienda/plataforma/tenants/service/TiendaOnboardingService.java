@@ -58,7 +58,7 @@ public class TiendaOnboardingService {
 		TiendaUsuario vinculo = new TiendaUsuario();
 		vinculo.setTienda(tienda);
 		vinculo.setUsuario(usuario);
-		vinculo.setRolTienda(TiendaUsuario.ADMIN);
+		vinculo.setRolTienda(TiendaUsuario.STORE_OWNER);
 		vinculos.save(vinculo);
 
 		Suscripcion suscripcion = new Suscripcion();

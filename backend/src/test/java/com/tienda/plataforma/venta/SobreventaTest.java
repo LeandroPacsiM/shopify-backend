@@ -122,7 +122,7 @@ class SobreventaTest {
 
 		checkoutA = nuevoCheckout(tag + "a", tienda, cliente, variante, direccion, metodo, 1);
 		checkoutB = nuevoCheckout(tag + "b", tienda, cliente, variante, direccion, metodo, 1);
-		jwt = jwtService.acceso(usuario.getId(), List.of("cliente"));
+		jwt = jwtService.accesoCliente(cliente.getId(), tienda.getId());
 	}
 
 	@Test

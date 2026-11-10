@@ -75,8 +75,8 @@ public class PagoService {
 	}
 
 	@Transactional
-	public PagoResponse crearIntento(Long usuarioId, Long pedidoId, String codigoPasarela, String idempotencia) {
-		Pedido pedido = pedidoDe(usuarioId, pedidoId);
+	public PagoResponse crearIntento(Long clienteId, Long pedidoId, String codigoPasarela, String idempotencia) {
+		Pedido pedido = pedidoDe(clienteId, pedidoId);
 		String claveCliente = validarIdempotencia(idempotencia);
 		String codigo = codigoPasarela.trim().toLowerCase(Locale.ROOT);
 		if (Pedido.CANCELADO.equals(pedido.getEstado()) || Pedido.ENTREGADO.equals(pedido.getEstado())
@@ -264,11 +264,11 @@ public class PagoService {
 		return reembolsoWorkflow.reembolsar(tiendaId, pagoId, monto, motivo, idempotencia);
 	}
 
-	private Pedido pedidoDe(Long usuarioId, Long pedidoId) {
+	private Pedido pedidoDe(Long clienteId, Long pedidoId) {
 		Pedido pedido = pedidos.findConBloqueoById(pedidoId)
 				.orElseThrow(() -> new NoEncontradoException("pedido"));
 		entityManager.refresh(pedido, LockModeType.PESSIMISTIC_WRITE);
-		if (!pedido.getCliente().getUsuario().getId().equals(usuarioId)) {
+		if (!pedido.getCliente().getId().equals(clienteId)) {
 			throw new NoEncontradoException("pedido");
 		}
 		return pedido;

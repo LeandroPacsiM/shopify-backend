@@ -142,6 +142,13 @@ public class AuthService {
 		return new RegistroResponse(usuario.getId(), email, true);
 	}
 
+	/**
+	 * Registro legacy pre-B (RF-AUTH-01 original): crea usuario + CUSTOMER +
+	 * rol global en la tienda del slug. Deprecado en F3; los compradores
+	 * nuevos usan passwordless (RF-AUTH-10) y el staff usa
+	 * `registrarAdministrativo` (RF-AUTH-09). Se conserva hasta F4.
+	 */
+	@Deprecated
 	@Transactional
 	public RegistroResponse registrar(RegistroRequest req) {
 		String email = req.email().trim().toLowerCase();
@@ -430,8 +437,9 @@ public class AuthService {
 	}
 
 	/**
-	 * RF-AUTH-06: solo el admin de la tienda puede resetear el 2FA de un usuario
-	 * vinculado a ella. Anula secreto y backup codes.
+	 * RF-AUTH-06: solo el admin de la tienda puede resetear el 2FA de un
+	 * miembro staff vinculado a ella. Anula secreto y backup codes.
+	 * Objetivo B: CUSTOMER no pasa por aquí (sin TOTP).
 	 */
 	@Transactional
 	public void resetTotpPorAdmin(Long actorId, Long objetivoId, Long tiendaId) {
@@ -443,9 +451,7 @@ public class AuthService {
 		}
 		Usuario objetivo = usuarios.findById(objetivoId)
 				.orElseThrow(() -> new NoEncontradoException("usuario"));
-		boolean vinculado = tiendaUsuarios.findByTiendaIdAndUsuarioId(tiendaId, objetivoId).isPresent()
-				|| clientes.findByUsuarioId(objetivoId)
-						.map(c -> c.getTienda().getId().equals(tiendaId)).orElse(false);
+		boolean vinculado = tiendaUsuarios.findByTiendaIdAndUsuarioId(tiendaId, objetivoId).isPresent();
 		if (!vinculado) {
 			throw new NoEncontradoException("usuario");
 		}

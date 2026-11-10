@@ -85,11 +85,11 @@ public class CheckoutService {
 	}
 
 	@Transactional
-	public CheckoutResponse crear(Long usuarioId, String slug, CrearCheckoutRequest req) {
+	public CheckoutResponse crear(Long clienteId, String slug, CrearCheckoutRequest req) {
 		Tienda tienda = tiendas.findBySlug(slug)
 				.orElseThrow(() -> new NoEncontradoException("tienda"));
 		facturacion.exigirActiva(tienda.getId());
-		Cliente cliente = clientes.findByUsuarioId(usuarioId)
+		Cliente cliente = clientes.findById(clienteId)
 				.orElseThrow(() -> new NoEncontradoException("cliente"));
 		if (!cliente.getTienda().getId().equals(tienda.getId())) {
 			throw new NoEncontradoException("carrito");

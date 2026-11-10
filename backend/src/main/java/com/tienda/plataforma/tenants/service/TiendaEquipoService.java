@@ -19,8 +19,10 @@ import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
 /**
  * RF-ADMIN-04: equipo de la tienda. Solo `admin` (la ruta lo exige).
  * Agregar vincula un usuario ya registrado; revocar quita el vínculo sin
- * borrar el usuario (la BD prohíbe DELETE con historial). La tienda siempre
- * conserva al menos un admin.
+ * borrar el usuario (la BD prohíbe DELETE con historial). Reglas de
+ * propiedad (ADR-016, plan v5): `store_owner` no se asigna aquí (solo vía
+ * transferencia o confirmación SUPER_ADMIN); el único OWNER no se degrada
+ * ni se revoca.
  */
 @Service
 public class TiendaEquipoService {
@@ -49,8 +51,10 @@ public class TiendaEquipoService {
 	@Transactional
 	public MiembroResponse agregar(Long tiendaId, AgregarMiembroRequest req) {
 		String rol = rolValido(req.rol());
-		Usuario usuario = usuarios.findByEmail(req.email().trim().toLowerCase())
-				.orElseThrow(() -> new NoEncontradoException("usuario"));
+		if (TiendaUsuario.STORE_OWNER.equals(rol)) {
+			throw new ConflictoException("el owner solo llega por transferencia o confirmación");
+		}
+		Usuario usuario = usuarios.findByEmail(req.email().trim().toLowerCase())				.orElseThrow(() -> new NoEncontradoException("usuario"));
 		if (vinculos.findByTiendaIdAndUsuarioId(tiendaId, usuario.getId()).isPresent()) {
 			throw new ConflictoException("ya es miembro");
 		}
@@ -69,6 +73,15 @@ public class TiendaEquipoService {
 		String nuevo = rolValido(rol);
 		TiendaUsuario vinculo = vinculos.findByTiendaIdAndUsuarioId(tiendaId, usuarioId)
 				.orElseThrow(() -> new NoEncontradoException("miembro"));
+		if (TiendaUsuario.STORE_OWNER.equals(nuevo)
+				&& !TiendaUsuario.STORE_OWNER.equals(vinculo.getRolTienda())) {
+			throw new ConflictoException("el owner solo llega por transferencia o confirmación");
+		}
+		if (TiendaUsuario.STORE_OWNER.equals(vinculo.getRolTienda())
+				&& !TiendaUsuario.STORE_OWNER.equals(nuevo)
+				&& ownersDe(tiendaId) <= 1) {
+			throw new ConflictoException("la tienda necesita su owner (transfiere primero)");
+		}
 		if (TiendaUsuario.ADMIN.equals(vinculo.getRolTienda())
 				&& !TiendaUsuario.ADMIN.equals(nuevo)
 				&& adminsDe(tiendaId) <= 1) {
@@ -83,12 +96,21 @@ public class TiendaEquipoService {
 	public void revocar(Long tiendaId, Long usuarioId) {
 		TiendaUsuario vinculo = vinculos.findByTiendaIdAndUsuarioId(tiendaId, usuarioId)
 				.orElseThrow(() -> new NoEncontradoException("miembro"));
+		if (TiendaUsuario.STORE_OWNER.equals(vinculo.getRolTienda()) && ownersDe(tiendaId) <= 1) {
+			throw new ConflictoException("la tienda necesita su owner (transfiere primero)");
+		}
 		if (TiendaUsuario.ADMIN.equals(vinculo.getRolTienda()) && adminsDe(tiendaId) <= 1) {
 			throw new ConflictoException("la tienda necesita un admin");
 		}
 		Long vinculoId = vinculo.getId();
 		vinculos.delete(vinculo);
 		auditoria.registrar("tienda_usuarios", vinculoId, "tienda.revocar_miembro");
+	}
+
+	private long ownersDe(Long tiendaId) {
+		return vinculos.findByTiendaId(tiendaId).stream()
+				.filter(v -> TiendaUsuario.STORE_OWNER.equals(v.getRolTienda()))
+				.count();
 	}
 
 	private long adminsDe(Long tiendaId) {
@@ -102,7 +124,8 @@ public class TiendaEquipoService {
 			throw new ConflictoException("rol inválido");
 		}
 		String limpio = rol.trim().toLowerCase();
-		if (!TiendaUsuario.ADMIN.equals(limpio) && !TiendaUsuario.OPERADOR.equals(limpio)) {
+		if (!TiendaUsuario.STORE_OWNER.equals(limpio) && !TiendaUsuario.ADMIN.equals(limpio)
+				&& !TiendaUsuario.OPERADOR.equals(limpio)) {
 			throw new ConflictoException("rol inválido");
 		}
 		return limpio;

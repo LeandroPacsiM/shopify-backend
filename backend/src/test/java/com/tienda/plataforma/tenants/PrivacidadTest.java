@@ -18,8 +18,12 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.tienda.plataforma.auth.entity.ClienteSesion;
+import com.tienda.plataforma.auth.entity.CodigoCliente;
 import com.tienda.plataforma.auth.entity.Sesion;
 import com.tienda.plataforma.auth.entity.Usuario;
+import com.tienda.plataforma.auth.repository.ClienteSesionRepository;
+import com.tienda.plataforma.auth.repository.CodigoClienteRepository;
 import com.tienda.plataforma.auth.repository.SesionRepository;
 import com.tienda.plataforma.auth.repository.UsuarioRepository;
 import com.tienda.plataforma.catalogo.entity.Producto;
@@ -70,6 +74,10 @@ class PrivacidadTest {
 	@Autowired
 	SesionRepository sesiones;
 	@Autowired
+	ClienteSesionRepository clienteSesiones;
+	@Autowired
+	CodigoClienteRepository clienteCodigos;
+	@Autowired
 	CarritoRepository carritos;
 	@Autowired
 	CheckoutSesionRepository checkouts;
@@ -82,6 +90,7 @@ class PrivacidadTest {
 	Pedido pedido;
 	CheckoutSesion checkout;
 	String jwt;
+	String email;
 
 	@BeforeEach
 	void fixtures() {
@@ -93,7 +102,8 @@ class PrivacidadTest {
 		tiendas.save(tienda);
 
 		usuario = new Usuario();
-		usuario.setEmail("gd-" + tag + "@example.com");
+		email = "gd-" + tag + "@example.com";
+		usuario.setEmail(email);
 		usuario.setPasswordHash("x");
 		usuario.setNombre("Nombre");
 		usuario.setApellido("Apellido");
@@ -191,7 +201,22 @@ class PrivacidadTest {
 		checkout.setNotasCliente("nota checkout");
 		checkouts.save(checkout);
 
-		jwt = jwtService.acceso(usuario.getId(), List.of("cliente"));
+		jwt = jwtService.accesoCliente(cliente.getId(), tienda.getId());
+
+		ClienteSesion cs = new ClienteSesion();
+		cs.setCliente(cliente);
+		cs.setTokenHash("gdpr-c-" + tag);
+		cs.setFamiliaId(UUID.randomUUID());
+		cs.setExpiraEn(Instant.now().plusSeconds(7 * 24 * 60 * 60));
+		clienteSesiones.save(cs);
+
+		CodigoCliente cc = new CodigoCliente();
+		cc.setTienda(tienda);
+		cc.setEmail(cliente.getEmail());
+		cc.setCliente(cliente);
+		cc.setCodigoHmac("gdpr-h-" + tag);
+		cc.setExpiraEn(Instant.now().plusSeconds(600));
+		clienteCodigos.save(cc);
 	}
 
 	@Test
@@ -202,13 +227,20 @@ class PrivacidadTest {
 				.andExpect(status().isNoContent());
 
 		Usuario u = usuarios.findById(usuario.getId()).orElseThrow();
-		assertEquals("eliminado-" + usuario.getId() + "@anonimo.local", u.getEmail());
-		assertFalse(u.getActivo());
+		assertEquals(email, u.getEmail());
+		assertTrue(u.getActivo());
 		assertTrue(sesiones.findByUsuarioId(usuario.getId()).stream()
-				.allMatch(s -> s.getRevocadoEn() != null));
+				.allMatch(s -> s.getRevocadoEn() == null));
 
 		Cliente c = clientes.findById(cliente.getId()).orElseThrow();
 		assertNull(c.getTelefono());
+		assertEquals("eliminado-" + cliente.getId() + "@anonimo.local", c.getEmail());
+		assertTrue(clienteSesiones.findByClienteId(cliente.getId()).stream()
+				.allMatch(s -> s.getRevocadoEn() != null));
+		assertTrue(clienteCodigos
+				.findByTiendaIdAndEmailAndUsadoEnIsNullOrderByCreadoEnDesc(
+						tienda.getId(), email)
+				.isEmpty());
 
 		assertTrue(direcciones.findByClienteId(cliente.getId()).stream()
 				.allMatch(d -> "Eliminada".equals(d.getLinea1()) && d.getCiudad() == null));

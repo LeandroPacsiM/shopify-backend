@@ -176,7 +176,7 @@ class CuponUltimoUsoTest {
 
 		checkoutA = nuevoCheckout(tag + "a", tienda, cliente, variante, direccion, metodo, descuento);
 		checkoutB = nuevoCheckout(tag + "b", tienda, cliente, variante, direccion, metodo, descuento);
-		jwt = jwtService.acceso(usuario.getId(), List.of("cliente"));
+		jwt = jwtService.accesoCliente(cliente.getId(), tienda.getId());
 	}
 
 	@Test

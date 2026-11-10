@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.tienda.plataforma.tenants.entity.Tienda;
-import com.tienda.plataforma.tenants.repository.ClienteRepository;
 import com.tienda.plataforma.tenants.repository.TiendaRepository;
 import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
 
@@ -33,13 +32,10 @@ public class TenantFilter extends OncePerRequestFilter {
 
 	private final TiendaRepository tiendas;
 	private final TiendaUsuarioRepository tiendaUsuarios;
-	private final ClienteRepository clientes;
 
-	public TenantFilter(TiendaRepository tiendas, TiendaUsuarioRepository tiendaUsuarios,
-			ClienteRepository clientes) {
+	public TenantFilter(TiendaRepository tiendas, TiendaUsuarioRepository tiendaUsuarios) {
 		this.tiendas = tiendas;
 		this.tiendaUsuarios = tiendaUsuarios;
-		this.clientes = clientes;
 	}
 
 	@Override
@@ -104,15 +100,20 @@ public class TenantFilter extends OncePerRequestFilter {
 
 	private boolean vinculadoA(Tienda tienda) {
 		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-		if (auth == null || !(auth.getPrincipal() instanceof Long usuarioId)) {
+		if (auth == null) {
+			return false;
+		}
+		// CUSTOMER por claim firmado (objetivo B): la tienda del JWT debe
+		// ser la del request. Sin re-consulta ni vínculo staff.
+		if (auth.getPrincipal() instanceof ClientePrincipal p) {
+			return p.tiendaId().equals(tienda.getId());
+		}
+		if (!(auth.getPrincipal() instanceof Long usuarioId)) {
 			return false;
 		}
 		boolean global = auth.getAuthorities().stream()
 				.anyMatch(a -> "ROLE_super_admin".equals(a.getAuthority()));
-		return global || tiendaUsuarios.findByTiendaIdAndUsuarioId(tienda.getId(), usuarioId).isPresent()
-				|| clientes.findByUsuarioId(usuarioId)
-						.map(c -> c.getTienda().getId().equals(tienda.getId()))
-						.orElse(false);
+		return global || tiendaUsuarios.findByTiendaIdAndUsuarioId(tienda.getId(), usuarioId).isPresent();
 	}
 
 	private boolean esFacturacion(String ruta) {

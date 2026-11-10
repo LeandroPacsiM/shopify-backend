@@ -10,6 +10,8 @@ import com.tienda.plataforma.auth.entity.ClienteSesion;
 
 public interface ClienteSesionRepository extends JpaRepository<ClienteSesion, Long> {
 
+	List<ClienteSesion> findByClienteId(Long clienteId);
+
 	Optional<ClienteSesion> findByTokenHash(String tokenHash);
 
 	List<ClienteSesion> findByFamiliaId(java.util.UUID familiaId);

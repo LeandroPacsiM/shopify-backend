@@ -106,7 +106,7 @@ class TrackingSeguridadTest {
 		asignacion.setUsuario(dueno);
 		asignacion.setRol(rolCliente);
 
-		jwtDueno = jwtService.acceso(dueno.getId(), List.of("cliente"));
+		jwtDueno = jwtService.accesoCliente(cliente.getId(), tiendaDos.getId());
 	}
 
 	@Test

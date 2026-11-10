@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tienda.plataforma.shared.exception.NoAutorizadoException;
-import com.tienda.plataforma.tenants.repository.ClienteRepository;
+import com.tienda.plataforma.shared.security.ClientePrincipal;
 import com.tienda.plataforma.venta.dto.AgregarLineaRequest;
 import com.tienda.plataforma.venta.dto.CarritoResponse;
 import com.tienda.plataforma.venta.dto.TrackingResponse;
@@ -30,19 +30,16 @@ public class StorefrontController {
 
 	private final TrackingService trackingService;
 	private final CarritoService carritoService;
-	private final ClienteRepository clientes;
 
-	public StorefrontController(TrackingService trackingService, CarritoService carritoService,
-			ClienteRepository clientes) {
+	public StorefrontController(TrackingService trackingService, CarritoService carritoService) {
 		this.trackingService = trackingService;
 		this.carritoService = carritoService;
-		this.clientes = clientes;
 	}
 
 	@GetMapping("/cuenta/pedidos/{id}/tracking")
 	@Operation(summary = "Tracking de un pedido propio, eventos ordenados")
 	public TrackingResponse tracking(@PathVariable String slug, @PathVariable Long id) {
-		return trackingService.tracking(usuarioId(), slug, id);
+		return trackingService.tracking(clienteId(), slug, id);
 	}
 
 	@PostMapping("/carrito")
@@ -60,20 +57,15 @@ public class StorefrontController {
 		return carritoService.agregarLinea(slug, token, clienteId(), req);
 	}
 
-	private Long usuarioId() {
-		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-		if (!(principal instanceof Long id)) {
-			throw new NoAutorizadoException("sin autenticación");
-		}
-		return id;
-	}
-
 	private Long clienteId() {
 		var authentication = SecurityContextHolder.getContext().getAuthentication();
 		Object principal = authentication == null ? null : authentication.getPrincipal();
-		if (!(principal instanceof Long id)) {
-			return null;
+		if (principal instanceof ClientePrincipal p) {
+			return p.clienteId();
 		}
-		return clientes.findByUsuarioId(id).map(c -> c.getId()).orElse(null);
+		if (principal instanceof Long) {
+			throw new NoAutorizadoException("se requiere sesión CUSTOMER");
+		}
+		return null;
 	}
 }

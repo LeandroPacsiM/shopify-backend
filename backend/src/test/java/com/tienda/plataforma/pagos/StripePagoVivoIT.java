@@ -123,7 +123,7 @@ class StripePagoVivoIT {
 		creds.setActivo(true);
 		tiendaPasarelas.save(creds);
 
-		var intento = pagoService.crearIntento(usuario.getId(), pedido.getId(), "stripe", "sv-" + tag);
+		var intento = pagoService.crearIntento(cliente.getId(), pedido.getId(), "stripe", "sv-" + tag);
 		assertTrue(intento.transaccionExternaId().startsWith("pi_"), intento.transaccionExternaId());
 
 		confirmarConVisa(sk, intento.transaccionExternaId());

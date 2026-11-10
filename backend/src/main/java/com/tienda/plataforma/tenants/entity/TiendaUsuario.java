@@ -19,7 +19,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Rol admin/operador de un usuario dentro de una tienda. Tabla `tienda_usuarios` (V12). */
+/** Rol staff de un usuario dentro de una tienda. Tabla `tienda_usuarios` (V12 + `store_owner` V21). */
 @Entity
 @Table(name = "tienda_usuarios",
 		uniqueConstraints = @UniqueConstraint(name = "uq_tienda_usuario",
@@ -29,6 +29,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class TiendaUsuario {
 
+	public static final String STORE_OWNER = "store_owner";
 	public static final String ADMIN = "admin";
 	public static final String OPERADOR = "operador";
 
@@ -44,7 +45,7 @@ public class TiendaUsuario {
 	@JoinColumn(name = "usuario_id", nullable = false)
 	private Usuario usuario;
 
-	/** Solo `admin` u `operador` (CHECK en BD). */
+	/** Solo `store_owner`/`admin`/`operador` (CHECK en BD, V21). */
 	@Column(nullable = false, length = 20)
 	private String rolTienda;
 

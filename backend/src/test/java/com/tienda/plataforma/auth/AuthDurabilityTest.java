@@ -164,6 +164,12 @@ class AuthDurabilityTest {
 		cliente.setAceptaMarketing(false);
 		cliente.setEmail(cliente.getUsuario().getEmail());
 		clientes.save(cliente);
+		// F3: el reseteo exige membresía staff; el objetivo es operador.
+		TiendaUsuario vinculoObjetivo = new TiendaUsuario();
+		vinculoObjetivo.setTienda(tienda);
+		vinculoObjetivo.setUsuario(objetivo);
+		vinculoObjetivo.setRolTienda(TiendaUsuario.OPERADOR);
+		tiendaUsuarios.save(vinculoObjetivo);
 		objetivo.setTotpSecret(crypto.cifrar(totp.generarSecreto()));
 		objetivo.setTotpHabilitado(true);
 		objetivo.setTotpConfirmadoEn(Instant.now());

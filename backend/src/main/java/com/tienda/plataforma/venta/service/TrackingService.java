@@ -35,7 +35,7 @@ public class TrackingService {
 	}
 
 	@Transactional(readOnly = true)
-	public TrackingResponse tracking(Long usuarioId, String slug, Long pedidoId) {
+	public TrackingResponse tracking(Long clienteId, String slug, Long pedidoId) {
 		Long tiendaId = tiendas.findBySlug(slug)
 				.orElseThrow(() -> new NoEncontradoException("tienda")).getId();
 		Pedido pedido = pedidos.findById(pedidoId)
@@ -43,7 +43,7 @@ public class TrackingService {
 		if (!pedido.getTienda().getId().equals(tiendaId)) {
 			throw new NoEncontradoException("pedido");
 		}
-		if (!pedido.getCliente().getUsuario().getId().equals(usuarioId)) {
+		if (!pedido.getCliente().getId().equals(clienteId)) {
 			throw new ProhibidoException("no es tu pedido");
 		}
 		List<EnvioTracking> lista = envios.findByPedidoId(pedidoId).stream()

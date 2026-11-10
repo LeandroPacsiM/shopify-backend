@@ -76,12 +76,12 @@ class PedidoContactoTest {
 		Contexto ctx = fixtures("pc-");
 		var req = new CrearCheckoutRequest(ctx.carritoToken(), ctx.direccionId(), ctx.direccionId(),
 				ctx.metodoId(), null, "cli@example.com", "999888777", "Dejar en puerta");
-		CheckoutResponse checkout = pedidos.crearCheckout(ctx.usuarioId(), ctx.slug(), req);
+		CheckoutResponse checkout = pedidos.crearCheckout(ctx.clienteId(), ctx.slug(), req);
 		assertEquals("cli@example.com", checkout.emailContacto());
 		assertEquals("999888777", checkout.telefonoContacto());
 		assertEquals("Dejar en puerta", checkout.notasCliente());
 
-		PedidoResponse pedido = pedidos.confirmar(ctx.usuarioId(), ctx.tiendaId(), checkout.id());
+		PedidoResponse pedido = pedidos.confirmar(ctx.clienteId(), ctx.tiendaId(), checkout.id());
 		assertEquals("cli@example.com", pedido.emailContacto());
 		assertEquals("999888777", pedido.telefonoContacto());
 		assertEquals("Dejar en puerta", pedido.notasCliente());
@@ -92,8 +92,8 @@ class PedidoContactoTest {
 		Contexto ctx = fixtures("pn-");
 		var req = new CrearCheckoutRequest(ctx.carritoToken(), ctx.direccionId(), ctx.direccionId(),
 				ctx.metodoId(), null);
-		CheckoutResponse checkout = pedidos.crearCheckout(ctx.usuarioId(), ctx.slug(), req);
-		PedidoResponse pedido = pedidos.confirmar(ctx.usuarioId(), ctx.tiendaId(), checkout.id());
+		CheckoutResponse checkout = pedidos.crearCheckout(ctx.clienteId(), ctx.slug(), req);
+		PedidoResponse pedido = pedidos.confirmar(ctx.clienteId(), ctx.tiendaId(), checkout.id());
 		assertNull(pedido.emailContacto());
 		assertNull(pedido.telefonoContacto());
 		assertNull(pedido.notasCliente());
@@ -104,7 +104,7 @@ class PedidoContactoTest {
 		Contexto ctx = fixtures("pt-");
 		var req = new CrearCheckoutRequest(ctx.carritoToken(), ctx.direccionId(), ctx.direccionId(),
 				ctx.metodoId(), null);
-		CheckoutResponse checkout = pedidos.crearCheckout(ctx.usuarioId(), ctx.slug(), req);
+		CheckoutResponse checkout = pedidos.crearCheckout(ctx.clienteId(), ctx.slug(), req);
 
 		Tienda otra = new Tienda();
 		otra.setNombre("otra tienda " + UUID.randomUUID());
@@ -113,7 +113,7 @@ class PedidoContactoTest {
 		tiendas.save(otra);
 
 		assertThrows(NoEncontradoException.class,
-				() -> pedidos.confirmar(ctx.usuarioId(), otra.getId(), checkout.id()));
+				() -> pedidos.confirmar(ctx.clienteId(), otra.getId(), checkout.id()));
 	}
 
 	@Test
@@ -121,13 +121,13 @@ class PedidoContactoTest {
 		Contexto ctx = fixtures("po-");
 		var req = new CrearCheckoutRequest(ctx.carritoToken(), ctx.direccionId(), ctx.direccionId(),
 				ctx.metodoId(), null);
-		CheckoutResponse checkout = pedidos.crearCheckout(ctx.usuarioId(), ctx.slug(), req);
+		CheckoutResponse checkout = pedidos.crearCheckout(ctx.clienteId(), ctx.slug(), req);
 		Carrito carrito = carritos.findById(ctx.carritoId()).orElseThrow();
 		carrito.setCliente(null);
 		carritos.save(carrito);
 
 		assertThrows(NoEncontradoException.class,
-				() -> pedidos.confirmar(ctx.usuarioId(), ctx.tiendaId(), checkout.id()));
+				() -> pedidos.confirmar(ctx.clienteId(), ctx.tiendaId(), checkout.id()));
 	}
 
 	@Test
@@ -135,16 +135,16 @@ class PedidoContactoTest {
 		Contexto ctx = fixtures("pf-");
 		var req = new CrearCheckoutRequest(ctx.carritoToken(), ctx.direccionId(), ctx.direccionId(),
 				ctx.metodoId(), null);
-		CheckoutResponse checkout = pedidos.crearCheckout(ctx.usuarioId(), ctx.slug(), req);
+		CheckoutResponse checkout = pedidos.crearCheckout(ctx.clienteId(), ctx.slug(), req);
 		Tienda tienda = tiendas.findById(ctx.tiendaId()).orElseThrow();
 		tienda.setActiva(false);
 		tiendas.save(tienda);
 
 		assertThrows(ConflictoException.class,
-				() -> pedidos.confirmar(ctx.usuarioId(), ctx.tiendaId(), checkout.id()));
+				() -> pedidos.confirmar(ctx.clienteId(), ctx.tiendaId(), checkout.id()));
 	}
 
-	private record Contexto(Long usuarioId, Long tiendaId, Long carritoId, String slug,
+	private record Contexto(Long clienteId, Long tiendaId, Long carritoId, String slug,
 			String carritoToken, Long direccionId, Long metodoId) {
 	}
 
@@ -228,7 +228,7 @@ class PedidoContactoTest {
 		suscripcion.setPeriodoFin(java.time.Instant.now().plusSeconds(30 * 24 * 60 * 60));
 		suscripciones.save(suscripcion);
 
-		return new Contexto(usuario.getId(), tienda.getId(), carrito.getId(), tienda.getSlug(), carrito.getToken(),
+		return new Contexto(cliente.getId(), tienda.getId(), carrito.getId(), tienda.getSlug(), carrito.getToken(),
 				direccion.getId(), metodo.getId());
 	}
 }

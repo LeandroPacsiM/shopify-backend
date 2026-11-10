@@ -85,7 +85,7 @@ class OnboardingTiendaTest {
 
 		Tienda tienda = tiendas.findBySlug(slug).orElseThrow();
 		assertTrue(tienda.getActiva());
-		assertEquals(TiendaUsuario.ADMIN, vinculos
+		assertEquals(TiendaUsuario.STORE_OWNER, vinculos
 				.findByTiendaIdAndUsuarioId(tienda.getId(), comerciante.getId())
 				.orElseThrow().getRolTienda());
 		Suscripcion s = suscripciones.findByTiendaId(tienda.getId()).orElseThrow();

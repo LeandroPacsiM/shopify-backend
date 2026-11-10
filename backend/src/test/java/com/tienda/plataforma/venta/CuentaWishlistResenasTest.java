@@ -80,7 +80,7 @@ class CuentaWishlistResenasTest {
 		cliente.setAceptaMarketing(false);
 		cliente.setEmail(cliente.getUsuario().getEmail());
 		clientes.save(cliente);
-		jwtCliente = jwtService.acceso(dueno.getId(), List.of("cliente"));
+		jwtCliente = jwtService.accesoCliente(cliente.getId(), tienda.getId());
 
 		Usuario admin = nuevoUsuario("wa-" + tag);
 		TiendaUsuario vinculo = new TiendaUsuario();

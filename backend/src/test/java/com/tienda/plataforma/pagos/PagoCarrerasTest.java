@@ -63,6 +63,7 @@ class PagoCarrerasTest {
 
 	Tienda tienda;
 	Usuario usuario;
+	Cliente cliente;
 	Pedido pedido;
 
 	@BeforeEach
@@ -87,7 +88,7 @@ class PagoCarrerasTest {
 		cliente.setTienda(tienda);
 		cliente.setAceptaMarketing(false);
 		cliente.setEmail(cliente.getUsuario().getEmail());
-		clientes.save(cliente);
+		this.cliente = clientes.save(cliente);
 
 		pedido = new Pedido();
 		pedido.setTienda(tienda);
@@ -146,8 +147,8 @@ class PagoCarrerasTest {
 
 	@Test
 	void mismoIdempotencyKeyDePagoDevuelveElIntentoExistente() {
-		var primero = pagoService.crearIntento(usuario.getId(), pedido.getId(), "mock", "charge-retry-1");
-		var repetido = pagoService.crearIntento(usuario.getId(), pedido.getId(), "mock", "charge-retry-1");
+		var primero = pagoService.crearIntento(cliente.getId(), pedido.getId(), "mock", "charge-retry-1");
+		var repetido = pagoService.crearIntento(cliente.getId(), pedido.getId(), "mock", "charge-retry-1");
 
 		assertEquals(primero.id(), repetido.id());
 		assertEquals(1, pagos.findByPedidoId(pedido.getId()).size());
@@ -202,7 +203,7 @@ class PagoCarrerasTest {
 
 	private boolean crearIntento(String idempotencia) {
 		try {
-			pagoService.crearIntento(usuario.getId(), pedido.getId(), "mock", idempotencia);
+			pagoService.crearIntento(cliente.getId(), pedido.getId(), "mock", idempotencia);
 			return true;
 		} catch (ConflictoException e) {
 			return false;

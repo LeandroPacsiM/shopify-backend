@@ -64,7 +64,6 @@ class RolSuperficiesTest {
 	String jwtAdmin;
 	String jwtOperador;
 	String jwtCliente;
-	String jwtClienteConClaimAdmin;
 	String jwtSuperAdmin;
 
 	@BeforeEach
@@ -88,9 +87,8 @@ class RolSuperficiesTest {
 		registroCliente.setAceptaMarketing(false);
 		registroCliente.setEmail(registroCliente.getUsuario().getEmail());
 		clientes.save(registroCliente);
-		jwtCliente = jwtService.acceso(cliente.getId(), List.of("cliente"));
-		// Una autoridad global/antigua no sustituye el rol admin de tienda.
-		jwtClienteConClaimAdmin = jwtService.acceso(cliente.getId(), List.of("admin"));
+		// F3: el comprador entra con JWT CUSTOMER (aud propia), no con JWT staff.
+		jwtCliente = jwtService.accesoCliente(registroCliente.getId(), tienda.getId());
 
 		superAdmin = nuevoUsuario("rss-" + tag);
 		jwtSuperAdmin = jwtService.acceso(superAdmin.getId(), List.of("super_admin"));
@@ -103,7 +101,7 @@ class RolSuperficiesTest {
 				.header("X-Tienda-Slug", tienda.getSlug()))
 				.andExpect(status().isOk());
 
-		mvc.perform(post("/api/admin/usuarios/{id}/2fa/reset", cliente.getId())
+		mvc.perform(post("/api/admin/usuarios/{id}/2fa/reset", operador.getId())
 				.header("Authorization", bearer(jwtAdmin))
 				.header("X-Tienda-Slug", tienda.getSlug()))
 				.andExpect(status().isNoContent());
@@ -121,7 +119,7 @@ class RolSuperficiesTest {
 				.header("X-Tienda-Slug", tienda.getSlug()))
 				.andExpect(status().isOk());
 
-		mvc.perform(post("/api/admin/usuarios/{id}/2fa/reset", cliente.getId())
+		mvc.perform(post("/api/admin/usuarios/{id}/2fa/reset", operador.getId())
 				.header("Authorization", bearer(jwtOperador))
 				.header("X-Tienda-Slug", tienda.getSlug()))
 				.andExpect(status().isForbidden());
@@ -137,28 +135,23 @@ class RolSuperficiesTest {
 				.andExpect(status().isForbidden());
 
 		assertThrows(ProhibidoException.class,
-				() -> authService.resetTotpPorAdmin(operador.getId(), cliente.getId(), tienda.getId()));
+				() -> authService.resetTotpPorAdmin(operador.getId(), operador.getId(), tienda.getId()));
 	}
 
 	@Test
-	void clienteNoAdminNiResetAunqueJwtTraigaClaimAdmin() throws Exception {
+	void customerNoAbreAdminNiOps() throws Exception {
 		mvc.perform(get("/api/admin/productos")
-				.header("Authorization", bearer(jwtCliente))
-				.header("X-Tienda-Slug", tienda.getSlug()))
-				.andExpect(status().isForbidden());
-
-		mvc.perform(get("/api/admin/productos")
-				.header("Authorization", bearer(jwtClienteConClaimAdmin))
-				.header("X-Tienda-Slug", tienda.getSlug()))
-				.andExpect(status().isForbidden());
-
-		mvc.perform(post("/api/admin/usuarios/{id}/2fa/reset", cliente.getId())
 				.header("Authorization", bearer(jwtCliente))
 				.header("X-Tienda-Slug", tienda.getSlug()))
 				.andExpect(status().isForbidden());
 
 		mvc.perform(post("/api/checkout/{id}/confirmar", 999999L)
-				.header("Authorization", bearer(jwtClienteConClaimAdmin))
+				.header("Authorization", bearer(jwtAdmin))
+				.header("X-Tienda-Slug", tienda.getSlug()))
+				.andExpect(status().isForbidden());
+
+		mvc.perform(post("/api/admin/usuarios/{id}/2fa/reset", cliente.getId())
+				.header("Authorization", bearer(jwtCliente))
 				.header("X-Tienda-Slug", tienda.getSlug()))
 				.andExpect(status().isForbidden());
 
@@ -214,7 +207,7 @@ class RolSuperficiesTest {
 		otroCliente.setAceptaMarketing(false);
 		otroCliente.setEmail(otroCliente.getUsuario().getEmail());
 		clientes.save(otroCliente);
-		String jwtOtroCliente = jwtService.acceso(otroUsuario.getId(), List.of("cliente"));
+		String jwtOtroCliente = jwtService.accesoCliente(otroCliente.getId(), tienda.getId());
 		Carrito carrito = nuevoCarrito(tienda, registroCliente);
 
 		mvc.perform(post("/api/storefront/{slug}/carrito", tienda.getSlug())

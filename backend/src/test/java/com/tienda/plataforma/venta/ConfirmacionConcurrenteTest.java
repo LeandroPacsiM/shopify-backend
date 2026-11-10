@@ -213,7 +213,7 @@ class ConfirmacionConcurrenteTest {
 		checkouts.save(checkout);
 		checkoutId = checkout.getId();
 
-		jwt = jwtService.acceso(usuario.getId(), List.of("cliente"));
+		jwt = jwtService.accesoCliente(cliente.getId(), tienda.getId());
 	}
 
 	@Test

@@ -198,7 +198,7 @@
 					}
 				},
 				{
-					"name": "login totp (guarda accessToken)",
+					"name": "login totp con codigo (JWT completo mfa=completa)",
 					"request": {
 						"method": "POST",
 						"url": "{{baseUrl}}/auth/login/totp",

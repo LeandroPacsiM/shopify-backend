@@ -1,6 +1,7 @@
 package com.tienda.plataforma.shared.security;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -48,9 +49,15 @@ public class JwtFilter extends OncePerRequestFilter {
 				if (sinVerificar.getAudience().contains(JwtService.AUD_STAFF)) {
 					DecodedJWT jwt = jwtService.verificarStaff(auth.substring(7));
 					Long usuarioId = Long.valueOf(jwt.getSubject());
-					List<SimpleGrantedAuthority> autoridades = jwt.getClaim("roles").asList(String.class).stream()
-							.map(r -> new SimpleGrantedAuthority("ROLE_" + r))
-							.toList();
+					List<SimpleGrantedAuthority> autoridades = new ArrayList<>(
+							jwt.getClaim("roles").asList(String.class).stream()
+									.map(r -> new SimpleGrantedAuthority("ROLE_" + r))
+									.toList());
+					// ADR-017: la sesión limitada viaja como autoridad para que el
+					// authorization manager la contenga sin releer el JWT.
+					if (JwtService.esMfaPendiente(jwt)) {
+						autoridades.add(new SimpleGrantedAuthority(JwtService.AUTORIDAD_MFA_PENDIENTE));
+					}
 					var authentication = new UsernamePasswordAuthenticationToken(usuarioId, null, autoridades);
 					SecurityContextHolder.getContext().setAuthentication(authentication);
 					request.setAttribute("usuarioId", usuarioId);

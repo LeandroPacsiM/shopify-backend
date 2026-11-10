@@ -23,6 +23,9 @@ public class TenantRoleAuthorizationManager {
 	/** El rol admin/operador vive en tienda_usuarios, no en el JWT global. El OWNER conserva todos los poderes de admin. */
 	public AuthorizationManager<RequestAuthorizationContext> adminOOperadorDeTienda() {
 		return (autenticacion, contexto) -> {
+			if (escrituraAdminBloqueada(autenticacion.get(), contexto)) {
+				return new AuthorizationDecision(false);
+			}
 			Authentication actor = autenticacion.get();
 			Long usuarioId = usuarioId(actor);
 			Tienda tienda = TenantContext.actual();
@@ -41,6 +44,9 @@ public class TenantRoleAuthorizationManager {
 	/** Acciones reservadas al admin (y al OWNER, que lo incluye todo), por ejemplo resetear el 2FA. */
 	public AuthorizationManager<RequestAuthorizationContext> adminDeTienda() {
 		return (autenticacion, contexto) -> {
+			if (escrituraAdminBloqueada(autenticacion.get(), contexto)) {
+				return new AuthorizationDecision(false);
+			}
 			Authentication actor = autenticacion.get();
 			Long usuarioId = usuarioId(actor);
 			Tienda tienda = TenantContext.actual();
@@ -58,6 +64,9 @@ public class TenantRoleAuthorizationManager {
 	/** Acciones reservadas al STORE_OWNER, p. ej. transferir la propiedad. */
 	public AuthorizationManager<RequestAuthorizationContext> ownerDeTienda() {
 		return (autenticacion, contexto) -> {
+			if (escrituraAdminBloqueada(autenticacion.get(), contexto)) {
+				return new AuthorizationDecision(false);
+			}
 			Authentication actor = autenticacion.get();
 			Long usuarioId = usuarioId(actor);
 			Tienda tienda = TenantContext.actual();
@@ -95,6 +104,27 @@ public class TenantRoleAuthorizationManager {
 			return null;
 		}
 		return actor.getPrincipal() instanceof Long id ? id : null;
+	}
+
+	/**
+	 * Deny-list ADR-017: la sesión limitada pre-2FA (`MFA_PENDIENTE`) solo
+	 * lee. Toda escritura bajo `/api/admin/**` exige JWT completo.
+	 * GET/HEAD/OPTIONS pasan (lectura, catálogo, preflight CORS). Las rutas
+	 * fuera de `/api/admin` no cambian (`/auth/tiendas`, enrolar TOTP y
+	 * refresh/logout siguen abiertos a la limitada).
+	 */
+	private boolean escrituraAdminBloqueada(Authentication actor,
+			RequestAuthorizationContext contexto) {
+		if (!tieneAutoridad(actor, JwtService.AUTORIDAD_MFA_PENDIENTE)) {
+			return false;
+		}
+		String metodo = contexto.getRequest().getMethod();
+		if ("GET".equalsIgnoreCase(metodo) || "HEAD".equalsIgnoreCase(metodo)
+				|| "OPTIONS".equalsIgnoreCase(metodo)) {
+			return false;
+		}
+		String ruta = contexto.getRequest().getRequestURI();
+		return ruta.equals("/api/admin") || ruta.startsWith("/api/admin/");
 	}
 
 	private boolean esSuperAdmin(Authentication actor) {

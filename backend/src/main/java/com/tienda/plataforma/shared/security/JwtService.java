@@ -29,6 +29,11 @@ public class JwtService {
 	public static final String CLAIM_MFA = "mfa";
 	public static final String MFA_COMPLETA = "completa";
 	public static final String MFA_PENDIENTE = "pendiente";
+	/**
+	 * Autoridad no-ROLE con la que `JwtFilter` marca la sesión limitada
+	 * para que el authorization manager la contenga sin releer el JWT.
+	 */
+	public static final String AUTORIDAD_MFA_PENDIENTE = "MFA_PENDIENTE";
 
 	private final Algorithm algoritmo;
 	private final String emisor = "plataforma-tiendas";

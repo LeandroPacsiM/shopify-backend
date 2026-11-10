@@ -134,6 +134,12 @@
 						<mail.proveedor>resend</mail.proveedor>
 						<mail.resend.key> </mail.resend.key>
 						<mail.brevo.key> </mail.brevo.key>
+						<!-- Tope de contextos Spring vivos (máx 4 pools Hikari ≈ 40 conns):
+							debe ir aquí como system property, NO en application-test.properties
+							(Spring lo lee antes de que exista cualquier Environment).
+							Sin tope, ~8 configuraciones × 10 conns + backend + pgAdmin
+							rozaban max_connections=100 ("too many clients"). -->
+						<spring.test.context.cache.maxSize>4</spring.test.context.cache.maxSize>
 					</systemPropertyVariables>
 				</configuration>
 			</plugin>

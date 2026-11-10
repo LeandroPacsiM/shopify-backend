@@ -1,0 +1,67 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  background: #f6f6f7;
+  color: #1a1a1a;
+}
+body { margin: 0; }
+.login-root { min-height: 100vh; }
+.login-topbar {
+  display: flex; align-items: center; gap: 24px;
+  padding: 12px 24px; background: #000; color: #fff;
+}
+.logo { font-weight: 800; }
+.links { display: flex; gap: 16px; opacity: 0.85; }
+.login-hint { margin-left: auto; opacity: 0.85; }
+.login-hero {
+  display: grid; grid-template-columns: 1fr 420px; gap: 32px;
+  padding: 48px 24px; max-width: 1100px; margin: 0 auto;
+}
+.hero-copy h1 { font-size: 44px; line-height: 1.05; margin: 0 0 12px; }
+.card {
+  background: #fff; border: 1px solid #e3e3e3; border-radius: 12px;
+  padding: 20px; display: flex; flex-direction: column; gap: 12px;
+}
+.card form { display: flex; flex-direction: column; gap: 12px; }
+.card label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.card input {
+  padding: 10px 12px; border: 1px solid #c9c9c9; border-radius: 8px; font-size: 15px;
+}
+.card button {
+  padding: 10px 14px; border-radius: 8px; border: 1px solid #111;
+  background: #111; color: #fff; cursor: pointer;
+}
+.card button[type='button'] { background: #fff; color: #111; }
+.muted { color: #616161; }
+.small { font-size: 12px; }
+.error { color: #b00020; background: #fdecea; padding: 8px 10px; border-radius: 8px; }
+.ok { color: #0a5c2f; background: #e6f4ea; padding: 8px 10px; border-radius: 8px; }
+.row { display: flex; gap: 10px; }
+.check { flex-direction: row !important; align-items: center; gap: 8px !important; }
+.admin-root { min-height: 100vh; display: flex; flex-direction: column; }
+.admin-topbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; background: #fff; border-bottom: 1px solid #e3e3e3;
+}
+.search { flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid #ddd; }
+.user { font-size: 13px; color: #444; }
+.admin-body { display: grid; grid-template-columns: 220px 1fr; flex: 1; }
+.sidebar {
+  background: #fff; border-right: 1px solid #e3e3e3; padding: 16px;
+  display: flex; flex-direction: column; gap: 10px; font-size: 14px;
+}
+.sidebar em { margin-top: 12px; font-size: 12px; color: #777; }
+.admin-main { padding: 20px; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+.stat { background: #fff; border: 1px solid #e3e3e3; border-radius: 10px; padding: 12px; }
+.mono { font-family: ui-monospace, monospace; font-size: 12px; word-break: break-all; }
+.admin-main button { padding: 8px 12px; border-radius: 8px; border: 1px solid #111; background: #fff; cursor: pointer; }
+.page { min-height: 100vh; }
+.topnav {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; background: #111; color: #fff;
+}
+.topnav a { color: #fff; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 20px; max-width: 1000px; margin: 0 auto; }
+.narrow { max-width: 560px; margin: 20px auto; }
+.page .card ul.mono { font-size: 13px; }

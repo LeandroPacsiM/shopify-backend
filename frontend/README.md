@@ -1,35 +1,32 @@
-# Demo visual de Auth (sin build)
+# React + TypeScript + Vite
 
-Página estática que muestra los dos flujos punta a punta contra el backend local.
-No es el SPA final: es una ayuda para la presentación.
+This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
-## Requisitos
+Currently, two official plugins are available:
 
-1. Backend levantado con perfil `local` (migra demo y expone `:8080`):
-   ```powershell
-   cd backend
-   $env:PGPASSWORD='1234'
-   ./mvnw spring-boot:run '-Dspring-boot.run.profiles=local'
-   ```
-2. Servir esta carpeta en un origen permitido por el CORS (`5173` o `3000`):
-   ```powershell
-   cd frontend
-   python -m http.server 5173
-   ```
-   Abrir `http://localhost:5173/demo-auth.html`. No abrir como `file://`
-   (las cookies HttpOnly de refresh no funcionan sin origen http).
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## Guion (historia de Pepito y María)
+## React Compiler
 
-Staff: registra → confirma email (código del log) → inicia TOTP (pega la URL
-otpauth en tu app o mete el secreto a mano) → confirma → login (challenge) →
-login/totp (JWT en memoria) → crea tienda (nace STORE_OWNER).
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-CUSTOMER: solicitar (código del log, el perfil aún no existe) → verificar
-(nace el perfil + JWT).
+## Expanding the Oxlint configuration
 
-## Notas
+If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
 
-- JWTs solo en memoria del JS, nunca en `localStorage`.
-- Refresh via cookies HttpOnly (`refresh` staff, `refresh_customer` CUSTOMER).
-- Códigos de email y CUSTOMER salen en el log del backend (modo prueba).
+```json
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "oxc"],
+  "options": {
+    "typeAware": true
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+  }
+}
+```
+
+See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.

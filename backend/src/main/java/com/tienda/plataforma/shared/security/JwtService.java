@@ -14,7 +14,9 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 
 /** JWT de acceso corto (15 min). El refresh opaco lo guarda `sesiones`.
  * Audiencias disjuntas (ADR-016): `tienda-admin` (staff) y
- * `tienda-storefront` (CUSTOMER); ningún filtro acepta la ajena. */
+ * `tienda-storefront` (CUSTOMER); ningún filtro acepta la ajena.
+ * Claim `mfa` (ADR-017): `completa` (2FA verificado) o `pendiente`
+ * (trial pre-2FA: solo crear tienda, enrolar y lectura/catálogo). */
 @Service
 public class JwtService {
 
@@ -24,6 +26,9 @@ public class JwtService {
 	public static final String AUD_CUSTOMER = "tienda-storefront";
 	public static final String AMBITO_STAFF = "staff";
 	public static final String AMBITO_CUSTOMER = "cliente";
+	public static final String CLAIM_MFA = "mfa";
+	public static final String MFA_COMPLETA = "completa";
+	public static final String MFA_PENDIENTE = "pendiente";
 
 	private final Algorithm algoritmo;
 	private final String emisor = "plataforma-tiendas";
@@ -41,11 +46,41 @@ public class JwtService {
 				.withIssuer(emisor)
 				.withAudience(AUD_STAFF)
 				.withClaim("ambito", AMBITO_STAFF)
+				.withClaim(CLAIM_MFA, MFA_COMPLETA)
 				.withSubject(String.valueOf(usuarioId))
 				.withArrayClaim("roles", roles.toArray(new String[0]))
 				.withExpiresAt(Date.from(expira))
 				.withIssuedAt(new Date())
 				.sign(algoritmo);
+	}
+
+	/**
+	 * Access staff limitado pre-2FA (trial estilo-Shopify, ADR-017): misma
+	 * `aud`/ámbito/`sub`, array `roles` vacío explícito (el filtro mapea
+	 * sin NPE) y `mfa=pendiente`. Solo abre crear tienda, enrolar TOTP y
+	 * lectura/catálogo; el deny-list de superficies bloquea el resto.
+	 */
+	public String accesoLimitado(Long usuarioId) {
+		Instant expira = Instant.now().plusSeconds(ACCESS_MINUTOS * 60);
+		return JWT.create()
+				.withIssuer(emisor)
+				.withAudience(AUD_STAFF)
+				.withClaim("ambito", AMBITO_STAFF)
+				.withClaim(CLAIM_MFA, MFA_PENDIENTE)
+				.withSubject(String.valueOf(usuarioId))
+				.withArrayClaim("roles", new String[0])
+				.withExpiresAt(Date.from(expira))
+				.withIssuedAt(new Date())
+				.sign(algoritmo);
+	}
+
+	/**
+	 * Solo el `mfa=pendiente` explícito limita. Tokens emitidos antes de
+	 * este cambio (sin claim, vida 15 min) se tratan como completos: el
+	 * código antiguo solo emitía con 2FA enrolado y verificado.
+	 */
+	public static boolean esMfaPendiente(DecodedJWT jwt) {
+		return MFA_PENDIENTE.equals(jwt.getClaim(CLAIM_MFA).asString());
 	}
 
 	/** Access CUSTOMER (15 min): `sub=cliente:{id}`, sin roles. */

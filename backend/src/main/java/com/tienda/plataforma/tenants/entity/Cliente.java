@@ -13,15 +13,16 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Comprador de una tienda (1:1 con usuario desde V5). Tabla `clientes`. */
+/** Perfil CUSTOMER de una tienda. Tabla `clientes` (V1/V5/V11 + email V20). */
 @Entity
-@Table(name = "clientes")
+@Table(name = "clientes", uniqueConstraints = @UniqueConstraint(columnNames = { "tienda_id", "email" }))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -31,13 +32,21 @@ public class Cliente {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@OneToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "usuario_id", nullable = false, unique = true)
+	/**
+	 * Vínculo temporal con el ámbito staff (actual pre-B). Nullable desde V20;
+	 * se elimina en V23 (ADR-016). No usar para autorización de CUSTOMER.
+	 */
+	@OneToOne(fetch = FetchType.LAZY, optional = true)
+	@JoinColumn(name = "usuario_id", nullable = true, unique = false)
 	private Usuario usuario;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "tienda_id", nullable = false)
 	private Tienda tienda;
+
+	/** Email normalizado (lower+trim). UNIQUE por tienda desde V20. */
+	@Column(nullable = false, length = 255)
+	private String email;
 
 	@Column(length = 100)
 	private String nombre;

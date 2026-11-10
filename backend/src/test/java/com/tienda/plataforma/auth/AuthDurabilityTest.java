@@ -162,6 +162,7 @@ class AuthDurabilityTest {
 		cliente.setUsuario(objetivo);
 		cliente.setTienda(tienda);
 		cliente.setAceptaMarketing(false);
+		cliente.setEmail(cliente.getUsuario().getEmail());
 		clientes.save(cliente);
 		objetivo.setTotpSecret(crypto.cifrar(totp.generarSecreto()));
 		objetivo.setTotpHabilitado(true);

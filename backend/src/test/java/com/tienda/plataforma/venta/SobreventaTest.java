@@ -177,6 +177,7 @@ class SobreventaTest {
 		cliente.setUsuario(usuario);
 		cliente.setTienda(tienda);
 		cliente.setAceptaMarketing(false);
+		cliente.setEmail(cliente.getUsuario().getEmail());
 		return clientes.save(cliente);
 	}
 

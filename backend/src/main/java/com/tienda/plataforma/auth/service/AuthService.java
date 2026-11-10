@@ -135,6 +135,7 @@ public class AuthService {
 		Cliente cliente = new Cliente();
 		cliente.setUsuario(usuario);
 		cliente.setTienda(tienda);
+		cliente.setEmail(email);
 		cliente.setNombre(req.nombre());
 		cliente.setApellido(req.apellido());
 		cliente.setAceptaMarketing(false);

@@ -88,6 +88,7 @@ class TrackingSeguridadTest {
 		cliente.setUsuario(dueno);
 		cliente.setTienda(tiendaDos);
 		cliente.setAceptaMarketing(false);
+		cliente.setEmail(cliente.getUsuario().getEmail());
 		clientes.save(cliente);
 
 		pedidoAjeno = new Pedido();

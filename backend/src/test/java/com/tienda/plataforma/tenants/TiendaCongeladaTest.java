@@ -76,6 +76,7 @@ class TiendaCongeladaTest {
 		c.setUsuario(comprador);
 		c.setTienda(tienda);
 		c.setAceptaMarketing(false);
+		c.setEmail(c.getUsuario().getEmail());
 		clientes.save(c);
 		jwtCliente = jwtService.acceso(comprador.getId(), List.of("cliente"));
 

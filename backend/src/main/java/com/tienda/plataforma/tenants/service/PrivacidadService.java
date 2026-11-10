@@ -94,6 +94,7 @@ public class PrivacidadService {
 		cliente.setNombre("Eliminado");
 		cliente.setApellido("Eliminado");
 		cliente.setTelefono(null);
+		cliente.setEmail("eliminado-" + cliente.getId() + "@anonimo.local");
 
 		direcciones.findByClienteId(cliente.getId()).forEach(d -> {
 			d.setLinea1("Eliminada");

@@ -169,6 +169,7 @@ class PedidoContactoTest {
 		cliente.setUsuario(usuario);
 		cliente.setTienda(tienda);
 		cliente.setAceptaMarketing(false);
+		cliente.setEmail(cliente.getUsuario().getEmail());
 		clientes.save(cliente);
 
 		Producto producto = new Producto();

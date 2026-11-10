@@ -78,6 +78,7 @@ class CuentaWishlistResenasTest {
 		cliente.setUsuario(dueno);
 		cliente.setTienda(tienda);
 		cliente.setAceptaMarketing(false);
+		cliente.setEmail(cliente.getUsuario().getEmail());
 		clientes.save(cliente);
 		jwtCliente = jwtService.acceso(dueno.getId(), List.of("cliente"));
 
@@ -203,6 +204,7 @@ class CuentaWishlistResenasTest {
 		clienteB.setUsuario(duenoB);
 		clienteB.setTienda(otra);
 		clienteB.setAceptaMarketing(false);
+		clienteB.setEmail(clienteB.getUsuario().getEmail());
 		clientes.save(clienteB);
 		Producto productoB = new Producto();
 		productoB.setTienda(otra);

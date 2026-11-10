@@ -112,6 +112,7 @@ class AuditoriaTiendaTest {
 		cliente.setUsuario(clienteUsuario);
 		cliente.setTienda(tienda);
 		cliente.setAceptaMarketing(false);
+		cliente.setEmail(cliente.getUsuario().getEmail());
 		clientes.save(cliente);
 
 		pendiente = nuevoPedido("AU-" + tag + "-1", Pedido.PENDIENTE, cliente);

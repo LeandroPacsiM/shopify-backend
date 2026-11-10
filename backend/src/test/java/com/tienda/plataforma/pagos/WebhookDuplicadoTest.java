@@ -81,6 +81,7 @@ class WebhookDuplicadoTest {
 		cliente.setUsuario(usuario);
 		cliente.setTienda(tienda);
 		cliente.setAceptaMarketing(false);
+		cliente.setEmail(cliente.getUsuario().getEmail());
 		clientes.save(cliente);
 
 		Pedido pedido = new Pedido();

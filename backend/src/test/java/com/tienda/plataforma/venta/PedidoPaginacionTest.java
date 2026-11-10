@@ -78,6 +78,7 @@ class PedidoPaginacionTest {
 		cliente.setUsuario(dueno);
 		cliente.setTienda(tienda);
 		cliente.setAceptaMarketing(false);
+		cliente.setEmail(cliente.getUsuario().getEmail());
 		clientes.save(cliente);
 
 		for (int i = 0; i < 5; i++) {

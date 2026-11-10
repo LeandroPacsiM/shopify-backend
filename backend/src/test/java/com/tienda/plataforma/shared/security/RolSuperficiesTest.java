@@ -86,6 +86,7 @@ class RolSuperficiesTest {
 		registroCliente.setUsuario(cliente);
 		registroCliente.setTienda(tienda);
 		registroCliente.setAceptaMarketing(false);
+		registroCliente.setEmail(registroCliente.getUsuario().getEmail());
 		clientes.save(registroCliente);
 		jwtCliente = jwtService.acceso(cliente.getId(), List.of("cliente"));
 		// Una autoridad global/antigua no sustituye el rol admin de tienda.
@@ -211,6 +212,7 @@ class RolSuperficiesTest {
 		otroCliente.setUsuario(otroUsuario);
 		otroCliente.setTienda(tienda);
 		otroCliente.setAceptaMarketing(false);
+		otroCliente.setEmail(otroCliente.getUsuario().getEmail());
 		clientes.save(otroCliente);
 		String jwtOtroCliente = jwtService.acceso(otroUsuario.getId(), List.of("cliente"));
 		Carrito carrito = nuevoCarrito(tienda, registroCliente);

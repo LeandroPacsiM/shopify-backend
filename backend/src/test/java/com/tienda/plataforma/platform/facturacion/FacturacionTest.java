@@ -98,6 +98,7 @@ class FacturacionTest {
 		c.setUsuario(cliente);
 		c.setTienda(tienda);
 		c.setAceptaMarketing(false);
+		c.setEmail(c.getUsuario().getEmail());
 		clientes.save(c);
 	}
 

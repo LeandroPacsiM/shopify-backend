@@ -109,6 +109,7 @@ class PrivacidadTest {
 		cliente.setApellido("Apellido");
 		cliente.setTelefono("999");
 		cliente.setAceptaMarketing(false);
+		cliente.setEmail(cliente.getUsuario().getEmail());
 		clientes.save(cliente);
 
 		Direccion d = new Direccion();

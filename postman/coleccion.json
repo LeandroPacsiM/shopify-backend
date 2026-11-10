@@ -427,7 +427,18 @@
 							"mode": "raw",
 							"raw": "{\"varianteId\":1,\"cantidad\":2}"
 						}
-					}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"if (j && j.token) { pm.collectionVariables.set('carritoToken', j.token); }"
+								]
+							}
+						}
+					]
 				},
 				{
 					"name": "mis pedidos",
@@ -474,7 +485,18 @@
 								"value": "{{tiendaSlug}}"
 							}
 						]
-					}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"if (j && j.token) { pm.collectionVariables.set('carritoToken', j.token); }"
+								]
+							}
+						}
+					]
 				},
 				{
 					"name": "tracking de mi pedido",

@@ -334,7 +334,18 @@
 							"mode": "raw",
 							"raw": "{\"tiendaSlug\":\"{{tiendaSlug}}\",\"email\":\"customer1@example.com\",\"codigo\":\"123456\"}"
 						}
-					}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.collectionVariables.set('customerToken', j.accessToken);"
+								]
+							}
+						}
+					]
 				},
 				{
 					"name": "refresh customer (cookie refresh_customer)",
@@ -363,7 +374,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
+								"value": "Bearer {{customerToken}}"
 							},
 							{
 								"key": "X-Tienda-Slug",
@@ -380,7 +391,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
+								"value": "Bearer {{customerToken}}"
 							},
 							{
 								"key": "X-Tienda-Slug",
@@ -401,7 +412,7 @@
 							},
 							{
 								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
+								"value": "Bearer {{customerToken}}"
 							},
 							{
 								"key": "X-Tienda-Slug",
@@ -426,7 +437,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
+								"value": "Bearer {{customerToken}}"
 							},
 							{
 								"key": "X-Tienda-Slug",
@@ -443,7 +454,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
+								"value": "Bearer {{customerToken}}"
 							},
 							{
 								"key": "X-Tienda-Slug",
@@ -473,7 +484,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
+								"value": "Bearer {{customerToken}}"
 							},
 							{
 								"key": "X-Tienda-Slug",
@@ -490,7 +501,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
+								"value": "Bearer {{customerToken}}"
 							},
 							{
 								"key": "X-Tienda-Slug",
@@ -511,7 +522,7 @@
 							},
 							{
 								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
+								"value": "Bearer {{customerToken}}"
 							},
 							{
 								"key": "X-Tienda-Slug",
@@ -532,7 +543,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
+								"value": "Bearer {{customerToken}}"
 							},
 							{
 								"key": "X-Tienda-Slug",
@@ -549,7 +560,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
+								"value": "Bearer {{customerToken}}"
 							},
 							{
 								"key": "X-Tienda-Slug",
@@ -570,7 +581,7 @@
 							},
 							{
 								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
+								"value": "Bearer {{customerToken}}"
 							},
 							{
 								"key": "X-Tienda-Slug",
@@ -591,7 +602,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
+								"value": "Bearer {{customerToken}}"
 							},
 							{
 								"key": "X-Tienda-Slug",
@@ -652,7 +663,7 @@
 							},
 							{
 								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
+								"value": "Bearer {{customerToken}}"
 							},
 							{
 								"key": "X-Tienda-Slug",
@@ -673,7 +684,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
+								"value": "Bearer {{customerToken}}"
 							},
 							{
 								"key": "X-Tienda-Slug",
@@ -694,7 +705,7 @@
 							},
 							{
 								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
+								"value": "Bearer {{customerToken}}"
 							},
 							{
 								"key": "X-Tienda-Slug",

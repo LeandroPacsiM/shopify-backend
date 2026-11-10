@@ -22,6 +22,7 @@ import com.tienda.plataforma.auth.dto.ConfirmarTotpRequest;
 import com.tienda.plataforma.auth.dto.CredencialesRequest;
 import com.tienda.plataforma.auth.dto.LoginRequest;
 import com.tienda.plataforma.auth.dto.RegistroRequest;
+import com.tienda.plataforma.auth.dto.RegistroAdministrativoRequest;
 import com.tienda.plataforma.auth.dto.RegistroResponse;
 import com.tienda.plataforma.auth.dto.TokensResponse;
 import com.tienda.plataforma.auth.dto.TotpConfirmadoResponse;
@@ -110,6 +111,35 @@ public class AuthService {
 		this.jwtService = jwtService;
 		this.entityManager = entityManager;
 		this.auditoria = auditoria;
+	}
+
+	/**
+	 * RF-AUTH-09 (objetivo B, D1): identidad staff sin ningún permiso. Sin
+	 * tienda, sin perfil CUSTOMER, sin rol global. El rol llega solo por
+	 * equipo (`TiendaEquipoService`) o creación de tienda (STORE_OWNER).
+	 */
+	@Transactional
+	public RegistroResponse registrarAdministrativo(RegistroAdministrativoRequest req) {
+		String email = req.email().trim().toLowerCase();
+		if (usuarios.existsByEmail(email)) {
+			throw new ConflictoException("email en uso");
+		}
+		Usuario usuario = new Usuario();
+		usuario.setEmail(email);
+		usuario.setPasswordHash(passwordEncoder.encode(req.password()));
+		usuario.setNombre(req.nombre());
+		usuario.setApellido(req.apellido());
+		usuario.setActivo(true);
+		usuario.setEmailVerificado(false);
+		usuario.setTotpHabilitado(false);
+		usuario.setIntentosFallidos(0);
+		usuarios.save(usuario);
+
+		emitirToken(usuario, TokenCuenta.VERIFICACION, VERIFICACION_TTL,
+				"Verifica tu email",
+				"Usa este código para verificar tu email (vale 24h):");
+
+		return new RegistroResponse(usuario.getId(), email, true);
 	}
 
 	@Transactional

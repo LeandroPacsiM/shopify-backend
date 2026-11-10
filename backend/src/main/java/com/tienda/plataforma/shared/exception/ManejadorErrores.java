@@ -12,6 +12,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class ManejadorErrores {
 
+	@ExceptionHandler(TasaExcedidaException.class)
+	public ResponseEntity<Map<String, Object>> tasaExcedida(TasaExcedidaException e) {
+		return cuerpo(HttpStatus.TOO_MANY_REQUESTS, e.getMessage());
+	}
+
 	@ExceptionHandler(ConflictoException.class)
 	public ResponseEntity<Map<String, Object>> conflicto(ConflictoException e) {
 		return cuerpo(HttpStatus.CONFLICT, e.getMessage());

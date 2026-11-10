@@ -23,6 +23,7 @@ import com.tienda.plataforma.auth.dto.EmailRequest;
 import com.tienda.plataforma.auth.dto.LoginRequest;
 import com.tienda.plataforma.auth.dto.ChallengeResponse;
 import com.tienda.plataforma.auth.dto.RegistroRequest;
+import com.tienda.plataforma.auth.dto.RegistroAdministrativoRequest;
 import com.tienda.plataforma.auth.dto.RegistroResponse;
 import com.tienda.plataforma.auth.dto.ResetConfirmRequest;
 import com.tienda.plataforma.auth.dto.TokenRequest;
@@ -58,9 +59,17 @@ public class AuthController {
 
 	@PostMapping("/registro")
 	@ResponseStatus(HttpStatus.CREATED)
-	@Operation(summary = "Registra usuario + cliente + rol en la tienda del slug")
+	@Operation(summary = "Registra usuario + cliente + rol en la tienda del slug (actual pre-B, se depreca en F3)")
 	public RegistroResponse registro(@Valid @RequestBody RegistroRequest req) {
 		return authService.registrar(req);
+	}
+
+	@PostMapping("/registro-administrativo")
+	@ResponseStatus(HttpStatus.CREATED)
+	@Operation(summary = "Registra identidad staff sin permisos (RF-AUTH-09, no crea CUSTOMER ni asigna rol)")
+	public RegistroResponse registroAdministrativo(
+			@Valid @RequestBody RegistroAdministrativoRequest req) {
+		return authService.registrarAdministrativo(req);
 	}
 
 	@PostMapping("/tiendas")

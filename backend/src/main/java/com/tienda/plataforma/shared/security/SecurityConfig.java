@@ -29,14 +29,16 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
 	private final JwtFilter jwtFilter;
+	private final ClienteJwtFilter clienteJwtFilter;
 	private final TenantFilter tenantFilter;
 	private final TenantRoleAuthorizationManager rolesTienda;
 	private final List<String> origenes;
 
-	public SecurityConfig(JwtFilter jwtFilter, TenantFilter tenantFilter,
-			TenantRoleAuthorizationManager rolesTienda,
+	public SecurityConfig(JwtFilter jwtFilter, ClienteJwtFilter clienteJwtFilter,
+			TenantFilter tenantFilter, TenantRoleAuthorizationManager rolesTienda,
 			@Value("${app.cors.origenes:}") String origenes) {
 		this.jwtFilter = jwtFilter;
+		this.clienteJwtFilter = clienteJwtFilter;
 		this.tenantFilter = tenantFilter;
 		this.rolesTienda = rolesTienda;
 		this.origenes = Arrays.stream(origenes.split(",")).map(String::trim)
@@ -104,6 +106,7 @@ public class SecurityConfig {
 						.requestMatchers("/api/storefront/**").denyAll()
 						.anyRequest().authenticated())
 				.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+				.addFilterBefore(clienteJwtFilter, JwtFilter.class)
 				.addFilterAfter(tenantFilter, JwtFilter.class);
 		return http.build();
 	}

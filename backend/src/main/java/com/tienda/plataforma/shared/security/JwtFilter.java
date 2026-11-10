@@ -42,14 +42,19 @@ public class JwtFilter extends OncePerRequestFilter {
 		String auth = request.getHeader("Authorization");
 		if (auth != null && auth.startsWith("Bearer ")) {
 			try {
-				DecodedJWT jwt = jwtService.verificar(auth.substring(7));
-				Long usuarioId = Long.valueOf(jwt.getSubject());
-				List<SimpleGrantedAuthority> autoridades = jwt.getClaim("roles").asList(String.class).stream()
-						.map(r -> new SimpleGrantedAuthority("ROLE_" + r))
-						.toList();
-				var authentication = new UsernamePasswordAuthenticationToken(usuarioId, null, autoridades);
-				SecurityContextHolder.getContext().setAuthentication(authentication);
-				request.setAttribute("usuarioId", usuarioId);
+				// Solo toca tokens staff (aud exacta); los CUSTOMER los
+				// atiende ClienteJwtFilter. Nunca limpia un principal ajeno.
+				DecodedJWT sinVerificar = com.auth0.jwt.JWT.decode(auth.substring(7));
+				if (sinVerificar.getAudience().contains(JwtService.AUD_STAFF)) {
+					DecodedJWT jwt = jwtService.verificarStaff(auth.substring(7));
+					Long usuarioId = Long.valueOf(jwt.getSubject());
+					List<SimpleGrantedAuthority> autoridades = jwt.getClaim("roles").asList(String.class).stream()
+							.map(r -> new SimpleGrantedAuthority("ROLE_" + r))
+							.toList();
+					var authentication = new UsernamePasswordAuthenticationToken(usuarioId, null, autoridades);
+					SecurityContextHolder.getContext().setAuthentication(authentication);
+					request.setAttribute("usuarioId", usuarioId);
+				}
 			} catch (Exception e) {
 				SecurityContextHolder.clearContext();
 			}

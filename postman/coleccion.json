@@ -806,6 +806,31 @@
 					}
 				},
 				{
+					"name": "crear variante (precio para vender)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/productos/:id/variantes",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"sku\":\"GORRA-UNICA\",\"precio\":49.90}"
+						}
+					}
+				},
+				{
 					"name": "crear colección",
 					"request": {
 						"method": "POST",

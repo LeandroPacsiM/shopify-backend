@@ -1,47 +1,47 @@
 # 10 — Requerimientos funcionales y no funcionales
 
 > Alcance: plataforma SaaS Multi-Tienda (tenants) y Multi-Sucursal (locations).
-> Lista completa de lo decidido hasta hoy (V1 + V2–V19, decisiones A, mock-first, multi-tenant, SPA único). Estado por ítem: **BD** = impuesto por la base, **BE** = pendiente del backend, **FE** = pendiente del frontend.
-> Terminología canónica (ADR-016, objetivo B): ámbito administrativo = STORE_OWNER (1 por tienda) / ADMIN / OPERATOR / SUPER_ADMIN (global); ámbito compras = CUSTOMER. Donde un RF aún describe el estado pre-B se marca **(actual)**; el objetivo se marca **(objetivo B)**.
+> Lista completa de lo decidido hasta hoy (V1 + V2–V23, ADR-016 aplicado, mock-first, multi-tenant, SPA único). Estado por ítem: **BD** = impuesto por la base, **BE** = pendiente del backend, **FE** = pendiente del frontend.
+> Terminología canónica aplicada (ADR-016, F4): ámbito administrativo = STORE_OWNER (1 por tienda) / ADMIN / OPERATOR / SUPER_ADMIN (global); ámbito compras = CUSTOMER.
 
 ## Glosario canónico (ADR-016)
 
 | Término | Ámbito | Dónde vive |
 |---|---|---|
-| STORE_OWNER | administrativo: propietario único de una tienda | `tienda_usuarios.rol_tienda='store_owner'` (objetivo B; actual: `admin` sin distinción) |
+| STORE_OWNER | administrativo: propietario único de una tienda | `tienda_usuarios.rol_tienda='store_owner'` (V21–V22) |
 | ADMIN | administrativo: administrador de tienda | `tienda_usuarios.rol_tienda='admin'` |
 | OPERATOR | administrativo: empleado con permisos específicos | `tienda_usuarios.rol_tienda='operador'` |
 | SUPER_ADMIN | plataforma: administrador general del software | `usuario_roles` global (solo Ops) |
-| CUSTOMER | compras: comprador de un storefront | `clientes` por tienda + `cliente_sesiones` (objetivo B; actual: `clientes.usuario_id` UNIQUE global + rol global `cliente`) |
+| CUSTOMER | compras: comprador de un storefront | `clientes` por tienda + `cliente_sesiones` (V20–V23, sin vínculo con `usuarios`) |
 
 ## RF-AUTH — Identidad y 2FA
 
 | ID | Requerimiento | Estado |
 |---|---|---|
-| RF-AUTH-01 | (actual) Registro con email + password, crea usuario + cliente + rol inicial en una transacción; exige `tiendaSlug`. Objetivo B: se divide en RF-AUTH-09 (staff) y RF-AUTH-10 (CUSTOMER) | BE |
-| RF-AUTH-02 | (actual) Enrolamiento TOTP obligatorio para todo registrado. Objetivo B: solo staff; CUSTOMER usa passwordless (decisión A derogada para CUSTOMER) | BD + BE |
-| RF-AUTH-03 | (actual) Login staff: password, luego challenge TOTP o backup code; JWT 15 min + refresh opaco rotado por familia (V8). Objetivo B: CUSTOMER con access 15 min + refresh 7 días con rotación y detección de reuso; audiencias disjuntas `tienda-admin` / `tienda-storefront` que nunca se intercambian | BD + BE |
+| RF-AUTH-01 | (retirado en F4b) Registro legacy eliminado con V23; ver RF-AUTH-09/10 | — |
+| RF-AUTH-02 | Enrolamiento TOTP staff: QR → primer código → habilitado + 10 backup codes; sin enrolar no hay sesión (CUSTOMER exento, passwordless) | BD + BE |
+| RF-AUTH-03 | Login staff (password + TOTP/backup, JWT 15 min + refresh rotado V8) y CUSTOMER (código + JWT 15 min + refresh 7 días rotado V21); audiencias disjuntas `tienda-admin` / `tienda-storefront` | BD + BE |
 | RF-AUTH-04 | Lockout: contar intentos, bloquear tras el umbral; respuesta genérica que no revela si el email existe | BD + BE |
 | RF-AUTH-05 | Reuso de refresh rotado revoca la familia entera; logout revoca por sesión/familia; job limpia expiradas | BE |
 | RF-AUTH-06 | Reset de 2FA por admin para usuarios bloqueados (re-enrolar con QR) | BE |
 | RF-AUTH-07 | Verificación de email y recuperación por código vía `tokens_cuenta` (V15: un solo uso, 24h/60min, solo hash); sin email verificado no hay sesión (el enrolamiento sí puede antes) | BD + BE |
 | RF-AUTH-08 | RBAC canónico (ADR-016): SUPER_ADMIN global en `usuario_roles` (solo Ops); por tienda en `tienda_usuarios`: STORE_OWNER (exactamente 1, V22) / ADMIN / OPERATOR; CUSTOMER independiente en `clientes`, fuera de `usuario_roles`. Denegación por defecto + titularidad por recurso | BD + BE |
-| RF-AUTH-09 | (objetivo B, D1) `POST /auth/registro-administrativo`: crea identidad staff sin otorgar ningún permiso; el rol llega solo por equipo o creación de tienda | BE |
-| RF-AUTH-10 | (objetivo B, D3) Auth CUSTOMER passwordless: código 6 dígitos (CSPRNG, hash HMAC), TTL 10 min, 5 intentos sin bloqueo permanente, rate limit por tienda/email e IP, reenvío 60 s; el perfil se crea al verificar. Flag `auth.customer.enabled=false` hasta el cutover | BE |
+| RF-AUTH-09 | (D1) `POST /auth/registro-administrativo`: identidad staff sin permisos; el rol llega solo por equipo o creación de tienda | BE |
+| RF-AUTH-10 | Auth CUSTOMER passwordless: código 6 dígitos (CSPRNG, HMAC), TTL 10 min, 5 intentos sin bloqueo, rate limit por tienda/email e IP, reenvío 60 s; perfil al verificar; flag `auth.customer.enabled` (on tras F4) | BE |
 
 ## RF-STORE — Tienda (solo cliente, `/tienda`)
 
 | ID | Requerimiento | Estado |
 |---|---|---|
 | RF-STORE-01 | Home, PLP por categoría/colección, PDP con variantes, búsqueda y etiquetas; solo variantes activas de productos activos | BE + FE |
-| RF-STORE-02 | Cuenta CUSTOMER: perfil, direcciones, pedidos, tracking, wishlist, reseñas propias. Actual: con 2FA; objetivo B: passwordless (decisión A derogada para CUSTOMER) | BE + FE |
+| RF-STORE-02 | Cuenta CUSTOMER (passwordless): perfil, direcciones, pedidos, tracking, wishlist, reseñas propias | BE + FE |
 
 ## RF-CART — Carrito y checkout
 
 | ID | Requerimiento | Estado |
 |---|---|---|
 | RF-CART-01 | Carrito anónimo por token; al autenticarse se asocia al CUSTOMER; una línea por variante | BD + BE |
-| RF-CART-02 | (actual) Checkout exige cliente + 2FA (sin guest, decisión A). Objetivo B: exige CUSTOMER verificado por código; guarda contacto/notas y las copia al pedido (V17) | BD + BE |
+| RF-CART-02 | Checkout exige CUSTOMER verificado por código (sin guest); guarda contacto/notas y las copia al pedido (V17) | BD + BE |
 | RF-CART-03 | Confirmación transaccional: pedido + líneas + direcciones + impuestos snapshot; checkout completado, carrito convertido, stock reservado | BE |
 
 ## RF-ORDER — Pedidos
@@ -88,7 +88,7 @@
 | RF-TENANT-01 | Filtro Tenant: todo recurso (producto, pedido, inventario, CUSTOMER, descuento) pertenece a una `tienda_id` y está estrictamente aislado; ninguna query cruza tiendas | BD + BE |
 | RF-TENANT-02 | El `tienda_id` se deriva de la identidad/autorización, nunca del request; tests anti-fuga entre tiendas | BE |
 | RF-TENANT-03 | SUPER_ADMIN opera a nivel plataforma (lista y agregados de tiendas, compliance); prohibido leer o modificar datos internos de tiendas; los roles de tienda solo ven la suya | BE + FE |
-| RF-TENANT-04 | Onboarding: usuario autenticado crea su tienda (`POST /auth/tiendas`, slug único) y queda STORE_OWNER (actual: `admin`) con suscripción `pendiente` (trial: sin checkout hasta activar); un usuario puede tener varias tiendas | BE |
+| RF-TENANT-04 | Onboarding: usuario autenticado crea su tienda (`POST /auth/tiendas`, slug único) y queda STORE_OWNER con suscripción `pendiente` (trial: sin checkout hasta activar); un usuario puede tener varias tiendas | BE |
 
 ### Contrato backend (sin código aún: criterios de aceptación)
 

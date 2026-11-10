@@ -9,8 +9,6 @@ import com.tienda.plataforma.tenants.entity.Cliente;
 
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
-	Optional<Cliente> findByUsuarioId(Long usuarioId);
-
 	Optional<Cliente> findByTiendaIdAndEmail(Long tiendaId, String email);
 
 	List<Cliente> findByTiendaId(Long tiendaId);

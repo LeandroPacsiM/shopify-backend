@@ -16,9 +16,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.tienda.plataforma.auth.entity.Rol;
 import com.tienda.plataforma.auth.entity.Usuario;
-import com.tienda.plataforma.auth.entity.UsuarioRol;
 import com.tienda.plataforma.auth.repository.UsuarioRepository;
 import com.tienda.plataforma.shared.security.JwtService;
 import com.tienda.plataforma.tenants.entity.Cliente;
@@ -27,8 +25,6 @@ import com.tienda.plataforma.tenants.repository.ClienteRepository;
 import com.tienda.plataforma.tenants.repository.TiendaRepository;
 import com.tienda.plataforma.venta.entity.Pedido;
 import com.tienda.plataforma.venta.repository.PedidoRepository;
-
-import jakarta.persistence.EntityManager;
 
 /** RF-TENANT-02: sin fuga entre tiendas (diagrama 05, contrato en 10). */
 @SpringBootTest
@@ -49,8 +45,6 @@ class TrackingSeguridadTest {
 	TiendaRepository tiendas;
 	@Autowired
 	PedidoRepository pedidos;
-	@Autowired
-	EntityManager entityManager;
 
 	Tienda tiendaDos;
 	Usuario dueno;
@@ -85,10 +79,9 @@ class TrackingSeguridadTest {
 		usuarios.save(dueno);
 
 		Cliente cliente = new Cliente();
-		cliente.setUsuario(dueno);
 		cliente.setTienda(tiendaDos);
 		cliente.setAceptaMarketing(false);
-		cliente.setEmail(cliente.getUsuario().getEmail());
+		cliente.setEmail(dueno.getEmail());
 		clientes.save(cliente);
 
 		pedidoAjeno = new Pedido();
@@ -98,14 +91,7 @@ class TrackingSeguridadTest {
 		pedidoAjeno.setEstado(Pedido.PAGADO);
 		pedidos.save(pedidoAjeno);
 
-		Rol rolCliente = entityManager
-				.createQuery("select r from Rol r where r.nombre = :n", Rol.class)
-				.setParameter("n", "cliente")
-				.getSingleResult();
-		UsuarioRol asignacion = new UsuarioRol();
-		asignacion.setUsuario(dueno);
-		asignacion.setRol(rolCliente);
-
+		// F4b: sin rol global `cliente` (V23); el JWT CUSTOMER manda.
 		jwtDueno = jwtService.accesoCliente(cliente.getId(), tiendaDos.getId());
 	}
 

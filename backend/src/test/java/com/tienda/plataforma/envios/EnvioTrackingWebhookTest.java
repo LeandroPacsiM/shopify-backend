@@ -86,10 +86,9 @@ class EnvioTrackingWebhookTest {
 		usuarios.save(usuario);
 
 		Cliente cliente = new Cliente();
-		cliente.setUsuario(usuario);
 		cliente.setTienda(tienda);
 		cliente.setAceptaMarketing(false);
-		cliente.setEmail(cliente.getUsuario().getEmail());
+		cliente.setEmail(usuario.getEmail());
 		clientes.save(cliente);
 
 		Pedido pedido = new Pedido();

@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.tienda.plataforma.auth.dto.ConfirmarTotpRequest;
 import com.tienda.plataforma.auth.dto.CredencialesRequest;
 import com.tienda.plataforma.auth.dto.LoginRequest;
-import com.tienda.plataforma.auth.dto.RegistroRequest;
+import com.tienda.plataforma.auth.dto.RegistroAdministrativoRequest;
 import com.tienda.plataforma.auth.dto.TotpLoginRequest;
 import com.tienda.plataforma.auth.entity.Usuario;
 import com.tienda.plataforma.auth.repository.UsuarioRepository;
@@ -52,17 +52,13 @@ class AuthFlowTest {
 		String tag = UUID.randomUUID().toString().substring(0, 8);
 		String email = "flow-" + tag + "@example.com";
 
-		com.tienda.plataforma.tenants.entity.Tienda tienda = new com.tienda.plataforma.tenants.entity.Tienda();
-		tienda.setNombre("Flow " + tag);
-		tienda.setSlug("flow-" + tag);
-		tienda.setActiva(true);
-		tienda = tiendas.save(tienda);
-
-		var reg = authService.registrar(new RegistroRequest(email, "Secreta123", "Flow", "Test", tienda.getSlug()));
+		// F4b: identidad staff sin tienda ni CUSTOMER (RF-AUTH-09).
+		var reg = authService.registrarAdministrativo(
+				new RegistroAdministrativoRequest(email, "Secreta123", "Flow", "Test"));
 		assertTrue(reg.requiereEnrolamientoTotp());
 
-		assertThrows(ConflictoException.class, () -> authService.registrar(
-				new RegistroRequest(email, "Secreta123", "F", "T", "tienda-demo")));
+		assertThrows(ConflictoException.class, () -> authService.registrarAdministrativo(
+				new RegistroAdministrativoRequest(email, "Secreta123", "F", "T")));
 
 		// Sin email verificado no hay login (RF-AUTH-07), pero el enrolamiento sí puede.
 		assertThrows(ConflictoException.class,
@@ -87,7 +83,8 @@ class AuthFlowTest {
 		SesionEmitida s1 = authService.verificarTotpLogin(
 				new TotpLoginRequest(email, "Secreta123", String.format("%06d", codigo2), null), null, null);
 		assertNotNull(s1.accessToken());
-		assertFalse(s1.roles().isEmpty());
+		// D1: identidad sin permisos → sin roles globales.
+		assertTrue(s1.roles().isEmpty());
 		jwtService.verificar(s1.accessToken());
 
 		SesionEmitida s2 = authService.refresh(s1.refreshPlano(), null, null);

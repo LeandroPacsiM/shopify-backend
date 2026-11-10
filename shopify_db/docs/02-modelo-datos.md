@@ -16,7 +16,7 @@ Los diagramas muestran solamente claves primarias, claves foráneas y campos rel
 | --- | --- |
 | `tiendas` | Tenants de la plataforma (V10). |
 | `tienda_pasarelas` | Credenciales de pasarela por tienda, secretos cifrados (V10). |
-| `tienda_usuarios` | Rol staff de un usuario dentro de una tienda: actual `admin`/`operador` (V12); objetivo B: `store_owner` (exactamente 1) / `admin` / `operador` (V21–V22). SUPER_ADMIN va en `usuario_roles` global. |
+| `tienda_usuarios` | Rol staff: `store_owner` (exactamente 1 por tienda, V22) / `admin` / `operador` (V21). SUPER_ADMIN va en `usuario_roles` global. |
 | `suscripciones` | Suscripción de la tienda al software, una por tienda (V18). |
 | `suscripcion_eventos` | Eventos de facturación procesados, dedup por referencia (V18). |
 
@@ -24,14 +24,14 @@ Los diagramas muestran solamente claves primarias, claves foráneas y campos rel
 
 | Tabla | Propósito |
 | --- | --- |
-| `usuarios` | Identidades del ámbito administrativo (STORE_OWNER/ADMIN/OPERATOR/SUPER_ADMIN): credenciales, estado y 2FA TOTP (V2). Objetivo B: dejan de crear perfil comprador al registrarse. |
-| `roles` | Catálogo de roles. Objetivo B: solo `super_admin` global; el rol `cliente` sale de `usuario_roles`. |
+| `usuarios` | Identidades del ámbito administrativo (STORE_OWNER/ADMIN/OPERATOR/SUPER_ADMIN): credenciales, estado y 2FA TOTP (V2). El registro staff no crea perfil comprador (RF-AUTH-09). |
+| `roles` | Solo `super_admin` global (V23 borró `cliente`/`admin`/`operador`). |
 | `permisos` | Catálogo de permisos asociables a roles. |
 | `rol_permisos` | Asociación entre roles y permisos, única para cada pareja. |
 | `usuario_roles` | Asociación entre usuarios y roles, única para cada pareja. |
-| `clientes` | Perfil CUSTOMER por tienda. Actual: vínculo 1:1 global con `usuarios` (V5). Objetivo B: `email` UNIQUE por tienda (V20), `usuario_id` nullable transitorio (V20) y eliminado (V23); sesiones propias en `cliente_sesiones` + códigos en `cliente_codigos` (V21). |
+| `clientes` | Perfil CUSTOMER por tienda: `email` UNIQUE por tienda (V20), sin vínculo con `usuarios` (V23); sesiones en `cliente_sesiones` y códigos en `cliente_codigos` (V21). |
 | `direcciones` | Direcciones postales de CUSTOMERs. |
-| `sesiones` | Sesiones staff con refresh rotado (V8). Objetivo B: CUSTOMER usa `cliente_sesiones` (V21). |
+| `sesiones` | Sesiones staff con refresh rotado (V8). CUSTOMER usa `cliente_sesiones` (V21). |
 | `usuario_codigos_recuperacion` | Códigos de recuperación 2FA (hash, un solo uso). Añadida en V2. |
 | `tokens_cuenta` | Tokens de verificación email / reset password (hash, un solo uso). Añadida en V15. |
 | `notificaciones` | Avisos de la bandeja staff por tienda. Añadida en V16. |

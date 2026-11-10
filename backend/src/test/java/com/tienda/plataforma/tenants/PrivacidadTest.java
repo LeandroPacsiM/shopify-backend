@@ -113,13 +113,12 @@ class PrivacidadTest {
 		usuarios.save(usuario);
 
 		cliente = new Cliente();
-		cliente.setUsuario(usuario);
 		cliente.setTienda(tienda);
 		cliente.setNombre("Nombre");
 		cliente.setApellido("Apellido");
 		cliente.setTelefono("999");
 		cliente.setAceptaMarketing(false);
-		cliente.setEmail(cliente.getUsuario().getEmail());
+		cliente.setEmail(usuario.getEmail());
 		clientes.save(cliente);
 
 		Direccion d = new Direccion();

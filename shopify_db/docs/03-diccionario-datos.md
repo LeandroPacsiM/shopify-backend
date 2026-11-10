@@ -75,19 +75,67 @@ Este documento describe las 59 tablas (V1 en `database/01_esquema_shopify.sql` +
 
 ## clientes
 
-**Descripción:** Perfil CUSTOMER por tienda (actual pre-B: vinculado obligatoriamente a una cuenta de usuario desde V5, sin guest checkout). Objetivo B (V20–V23, ADR-016): `email` UNIQUE por tienda, `usuario_id` nullable transitorio y eliminado, sesiones propias.
+**Descripción:** Perfil CUSTOMER por tienda, sin vínculo con cuentas de usuario (V23, ADR-016).
 
 | Campo | Tipo | Restricciones | Nulo | Descripción |
 |---|---|---|---|---|
 | id | BIGSERIAL | PK | No | Identificador del CUSTOMER. |
 | tienda_id | BIGINT | FK a tiendas(id) ON DELETE RESTRICT | No | Tienda propietaria (V11). |
-| usuario_id | BIGINT | UNIQUE (actual); FK a usuarios(id) ON DELETE RESTRICT | No (actual) → Sí transitorio (V20) → eliminado (V23) | Vínculo único y obligatorio solo en estado actual (V5). |
 | email | VARCHAR(255) | UNIQUE compuesto (tienda_id, email) | No | Email normalizado del CUSTOMER (V20). |
 | nombre | VARCHAR(100) | — | Sí | Nombre comercial o de pila del CUSTOMER. |
 | apellido | VARCHAR(100) | — | Sí | Apellido del CUSTOMER. |
 | telefono | VARCHAR(30) | — | Sí | Número telefónico de contacto. |
 | acepta_marketing | BOOLEAN | DEFAULT FALSE | No | Indica si el CUSTOMER autorizó comunicaciones de mercadotecnia. |
 | creado_en | TIMESTAMPTZ | DEFAULT NOW() | No | Fecha y hora de registro del CUSTOMER. |
+
+## cliente_sesiones
+
+**Descripción:** Sesiones CUSTOMER con refresh rotado de 7 días (V21, patrón `sesiones`/V8 sin TOTP).
+
+| Campo | Tipo | Restricciones | Nulo | Descripción |
+|---|---|---|---|---|
+| id | BIGSERIAL | PK | No | Identificador de la sesión. |
+| cliente_id | BIGINT | FK a clientes(id) ON DELETE RESTRICT | No | CUSTOMER titular. |
+| token_hash | VARCHAR(255) | UNIQUE | No | SHA-256 del refresh opaco. |
+| familia_id | UUID | — | Sí | Cadena de rotación. |
+| expira_en | TIMESTAMPTZ | — | No | Vencimiento (7 días). |
+| revocado_en | TIMESTAMPTZ | — | Sí | Revocación (logout, rotación, reuso). |
+| reemplazado_por_id | BIGINT | FK a cliente_sesiones(id) ON DELETE SET NULL | Sí | Siguiente sesión de la cadena. |
+| motivo_revocacion | VARCHAR(50) | — | Sí | Motivo de la revocación. |
+| ip | VARCHAR(45) | — | Sí | IP de origen. |
+| user_agent | VARCHAR(255) | — | Sí | Agente del titular. |
+| creado_en | TIMESTAMPTZ | DEFAULT NOW() | No | Creación. |
+
+## cliente_codigos
+
+**Descripción:** Códigos de 6 dígitos para passwordless (V21). HMAC-SHA256 con secreto en entorno; el perfil (`cliente_id`) solo se fija al verificar (D3).
+
+| Campo | Tipo | Restricciones | Nulo | Descripción |
+|---|---|---|---|---|
+| id | BIGSERIAL | PK | No | Identificador del código. |
+| tienda_id | BIGINT | FK a tiendas(id) ON DELETE RESTRICT | No | Tienda del intento. |
+| email | VARCHAR(255) | — | No | Email normalizado. |
+| cliente_id | BIGINT | FK a clientes(id) ON DELETE CASCADE | Sí | NULL hasta verificar con éxito. |
+| codigo_hmac | VARCHAR(255) | — | No | HMAC-SHA256 del código. |
+| intentos | INTEGER | CHECK (>= 0) | No | Intentos consumidos (máx. 5). |
+| expira_en | TIMESTAMPTZ | — | No | Vencimiento (10 min). |
+| usado_en | TIMESTAMPTZ | — | Sí | Consumo (un solo uso). |
+| ip | VARCHAR(45) | — | Sí | IP solicitante. |
+| creado_en | TIMESTAMPTZ | DEFAULT NOW() | No | Emisión (base del intervalo de reenvío 60 s). |
+
+## cliente_limite_ip
+
+**Descripción:** Contador de solicitudes por IP y ventana horaria (V21, rate limit atómico por upsert).
+
+| Campo | Tipo | Restricciones | Nulo | Descripción |
+|---|---|---|---|---|
+| ip | INET | PK compuesta | No | IP solicitante. |
+| ventana | TIMESTAMPTZ | PK compuesta | No | Inicio de la hora. |
+| contador | INTEGER | CHECK (>= 0) | No | Solicitudes en la ventana (máx. 30/h). |
+
+## _respaldo_cliente_usuario
+
+**Descripción:** Trazabilidad V23 de `(cliente_id, usuario_id)` previos. Retención 90 días, borrado en V24 futura; sin acceso desde la app (REVOKE a PUBLIC, sin entidad).
 
 ## direcciones
 
@@ -807,14 +855,14 @@ Este documento describe las 59 tablas (V1 en `database/01_esquema_shopify.sql` +
 
 ## tienda_usuarios
 
-**Descripción:** Rol staff de un usuario dentro de una tienda. Tabla añadida en la migración V12. Actual: `admin`/`operador`. Objetivo B (V21–V22): `store_owner` (exactamente 1) / `admin` / `operador`.
+**Descripción:** Rol staff de un usuario dentro de una tienda (V12; `store_owner` + obligatoriedad en V21–V22, ADR-016).
 
 | Campo | Tipo | Restricciones | Nulo | Descripción |
 |---|---|---|---|---|
 | id | BIGSERIAL | PK | No | Identificador de la asignación. |
 | tienda_id | BIGINT | FK a tiendas(id) ON DELETE CASCADE; UNIQUE compuesto uq_tienda_usuario (tienda_id, usuario_id) | No | Tienda del rol. |
 | usuario_id | BIGINT | FK a usuarios(id) ON DELETE CASCADE; UNIQUE compuesto uq_tienda_usuario (tienda_id, usuario_id) | No | Usuario con rol en la tienda. |
-| rol_tienda | VARCHAR(20) | CHECK actual `('admin','operador')`; objetivo B `('store_owner','admin','operador')` + índice ≤1 + trigger ≥1 (V21–V22) | No | Rol dentro de la tienda; SUPER_ADMIN va en `usuario_roles` global. |
+| rol_tienda | VARCHAR(20) | CHECK `('store_owner','admin','operador')` + índice único parcial ≤1 (V21) + trigger diferido ≥1 (V22) | No | Rol dentro de la tienda; SUPER_ADMIN va en `usuario_roles` global. |
 | creado_en | TIMESTAMPTZ | DEFAULT NOW() | No | Fecha y hora de la asignación. |
 
 ## suscripciones

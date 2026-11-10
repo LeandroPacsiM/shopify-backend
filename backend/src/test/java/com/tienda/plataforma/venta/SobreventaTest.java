@@ -192,10 +192,9 @@ class SobreventaTest {
 
 	private Cliente nuevoCliente(Usuario usuario, Tienda tienda) {
 		Cliente cliente = new Cliente();
-		cliente.setUsuario(usuario);
 		cliente.setTienda(tienda);
 		cliente.setAceptaMarketing(false);
-		cliente.setEmail(cliente.getUsuario().getEmail());
+		cliente.setEmail(usuario.getEmail());
 		return clientes.save(cliente);
 	}
 

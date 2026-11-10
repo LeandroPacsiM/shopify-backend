@@ -82,10 +82,9 @@ class RolSuperficiesTest {
 
 		cliente = nuevoUsuario("rsc-" + tag);
 		registroCliente = new Cliente();
-		registroCliente.setUsuario(cliente);
 		registroCliente.setTienda(tienda);
 		registroCliente.setAceptaMarketing(false);
-		registroCliente.setEmail(registroCliente.getUsuario().getEmail());
+		registroCliente.setEmail(cliente.getEmail());
 		clientes.save(registroCliente);
 		// F3: el comprador entra con JWT CUSTOMER (aud propia), no con JWT staff.
 		jwtCliente = jwtService.accesoCliente(registroCliente.getId(), tienda.getId());
@@ -202,10 +201,9 @@ class RolSuperficiesTest {
 	void tokenNoPermiteLeerCarritoDeOtroClienteAutenticado() throws Exception {
 		Usuario otroUsuario = nuevoUsuario("rsc2-" + UUID.randomUUID().toString().substring(0, 8));
 		Cliente otroCliente = new Cliente();
-		otroCliente.setUsuario(otroUsuario);
 		otroCliente.setTienda(tienda);
 		otroCliente.setAceptaMarketing(false);
-		otroCliente.setEmail(otroCliente.getUsuario().getEmail());
+		otroCliente.setEmail(otroUsuario.getEmail());
 		clientes.save(otroCliente);
 		String jwtOtroCliente = jwtService.accesoCliente(otroCliente.getId(), tienda.getId());
 		Carrito carrito = nuevoCarrito(tienda, registroCliente);

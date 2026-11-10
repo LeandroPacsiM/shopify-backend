@@ -123,10 +123,9 @@ class AuditoriaTiendaTest {
 
 		clienteUsuario = nuevoUsuario("ac-" + tag);
 		Cliente cliente = new Cliente();
-		cliente.setUsuario(clienteUsuario);
 		cliente.setTienda(tienda);
 		cliente.setAceptaMarketing(false);
-		cliente.setEmail(cliente.getUsuario().getEmail());
+		cliente.setEmail(clienteUsuario.getEmail());
 		clientes.save(cliente);
 		// F3: el reseteo exige membresía staff.
 		TiendaUsuario vc = new TiendaUsuario();

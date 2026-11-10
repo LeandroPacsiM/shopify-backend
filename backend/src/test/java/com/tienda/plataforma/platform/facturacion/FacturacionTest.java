@@ -95,10 +95,9 @@ class FacturacionTest {
 
 		cliente = nuevoUsuario("fc-" + tag);
 		Cliente c = new Cliente();
-		c.setUsuario(cliente);
 		c.setTienda(tienda);
 		c.setAceptaMarketing(false);
-		c.setEmail(c.getUsuario().getEmail());
+		c.setEmail(cliente.getEmail());
 		clientes.save(c);
 	}
 

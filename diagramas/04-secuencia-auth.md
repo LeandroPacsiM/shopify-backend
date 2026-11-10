@@ -1,8 +1,6 @@
-# 04 — Secuencia Auth + 2FA (base: RF-AUTH, Flujo 1 de `05`, V2/V8; objetivo B: RF-AUTH-09/10, ADR-016)
+# 04 — Secuencia Auth staff + CUSTOMER (RF-AUTH-09/10, ADR-016 aplicado en F4)
 
-> Secciones "staff": estado actual. Sección "CUSTOMER": objetivo B (flag `auth.customer.enabled=false` hasta el cutover).
-
-## Registro staff + enrolamiento (actual; objetivo B: `POST /auth/registro-administrativo` sin permisos)
+## Registro staff + enrolamiento (`POST /auth/registro-administrativo`, sin permisos)
 
 ```mermaid
 sequenceDiagram
@@ -13,9 +11,9 @@ sequenceDiagram
     participant D as PostgreSQL
 
     U->>C: POST /auth/registro (email, password)
-    C->>S: registrar()
+    C->>S: registrarAdministrativo()
     S->>R: existePorEmail? (409 si sí)
-    S->>D: TX: usuario + cliente + rol inicial
+    S->>D: TX: usuario (sin CUSTOMER, sin rol)
     S->>S: genera secreto TOTP (cifrado)
     C-->>U: 201 + QR otpauth://
     U->>C: POST /auth/totp/confirmar (código)
@@ -24,7 +22,7 @@ sequenceDiagram
     C-->>U: 200 enrolado (códigos una sola vez)
 ```
 
-## Login staff + refresh (actual; `aud=tienda-admin` en objetivo B)
+## Login staff + refresh (`aud=tienda-admin`)
 
 ```mermaid
 sequenceDiagram
@@ -48,7 +46,7 @@ sequenceDiagram
     Note over C,D: reuso de refresh rotado = revocar familia entera
 ```
 
-## Auth CUSTOMER passwordless (objetivo B, RF-AUTH-10, `aud=tienda-storefront`)
+## Auth CUSTOMER passwordless (RF-AUTH-10, `aud=tienda-storefront`)
 
 ```mermaid
 sequenceDiagram
@@ -110,7 +108,7 @@ sequenceDiagram
     participant D as PostgreSQL
 
     U->>C: POST /auth/registro (email, password)
-    C->>S: registrar() + emite token verificación (24h, solo hash)
+    C->>S: registrarAdministrativo() + emite token verificación (24h, solo hash)
     S->>D: TX: usuario + cliente + rol + token_cuenta
     S-->>U: correo con código (Resend HTTPS)
     U->>C: POST /auth/email/confirmar (código)

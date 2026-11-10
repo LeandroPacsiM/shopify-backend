@@ -1,8 +1,7 @@
-# 12 — Autorización por superficie y tenant (actual pre-B; objetivo B en ADR-016)
+# 12 — Autorización por superficie y tenant (ADR-016 aplicado en F4)
 
 - **Alcance:** autorización backend de roles para `/api/admin`, `/api/checkout`, Storefront y Ops.
-- **Fuente de roles (actual):** `usuario_roles` contiene roles globales de plataforma; `tienda_usuarios` contiene `admin`/`operador` por tienda; `clientes` identifica al CUSTOMER de su tienda (V12).
-- **Objetivo B:** `usuario_roles` solo SUPER_ADMIN; `tienda_usuarios` con STORE_OWNER/ADMIN/OPERATOR; CUSTOMER fuera de `usuario_roles`, con JWT propio (`aud=tienda-storefront`) que nunca se intercambia con el staff.
+- **Fuente de roles:** `usuario_roles` solo SUPER_ADMIN; `tienda_usuarios` con STORE_OWNER/ADMIN/OPERATOR; CUSTOMER fuera de `usuario_roles`, con JWT propio (`aud=tienda-storefront`) que nunca se intercambia con el staff.
 - **Catálogo/carrito:** la lectura del catálogo y las operaciones del carrito con token son públicas; eso no habilita checkout invitado. Las comprobaciones de tenant para requests con header y tienda congelada se endurecen en la tarea siguiente.
 
 ```mermaid
@@ -31,9 +30,9 @@ flowchart LR
 | Superficie | Autorización requerida | Rechazo explícito |
 |---|---|---|
 | `/api/admin/**` | `tienda_usuarios` del tenant activo con STORE_OWNER/ADMIN/OPERATOR | CUSTOMER sin vínculo staff; SUPER_ADMIN; tenant ausente |
-| `/api/admin/usuarios/**`, `/api/admin/pasarelas/**`, `/api/admin/facturacion/**` | STORE_OWNER/ADMIN de la tienda activa (actual: `admin`; objetivo B: transferencia y resguardo del OWNER) | OPERATOR; CUSTOMER; SUPER_ADMIN; tenant ausente |
-| `/api/checkout/**` | (actual) `ROLE_cliente` y fila `clientes` del principal en el tenant activo. Objetivo B: JWT CUSTOMER con `tienda_id` del tenant | Cualquier JWT staff/SUPER_ADMIN; tenant ausente |
-| `/api/storefront/{slug}/cuenta/**` | (actual) `ROLE_cliente` y CUSTOMER perteneciente al tenant activo. Objetivo B: JWT CUSTOMER | Cualquier JWT staff/SUPER_ADMIN; tenant ausente |
+| `/api/admin/usuarios/**`, `/api/admin/pasarelas/**`, `/api/admin/facturacion/**` | STORE_OWNER/ADMIN de la tienda activa (con resguardo y transferencia del OWNER) | OPERATOR; CUSTOMER; SUPER_ADMIN; tenant ausente |
+| `/api/checkout/**` | JWT CUSTOMER con `tienda_id` del tenant activo | Cualquier JWT staff/SUPER_ADMIN; tenant ausente |
+| `/api/storefront/{slug}/cuenta/**` | JWT CUSTOMER del tenant activo | Cualquier JWT staff/SUPER_ADMIN; tenant ausente |
 | `GET /api/storefront/{slug}/productos/**`, `/api/storefront/{slug}/carrito/**` | Público; el carrito exige token opaco para mutaciones | La autorización pública no permite comprar ni confirmar checkout |
 | `/api/ops/**` | Rol global SUPER_ADMIN | CUSTOMER, staff de tienda |
 

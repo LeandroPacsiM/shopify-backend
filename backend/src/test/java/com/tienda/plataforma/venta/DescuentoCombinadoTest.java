@@ -114,10 +114,9 @@ class DescuentoCombinadoTest {
 		usuarios.save(usuario);
 
 		cliente = new Cliente();
-		cliente.setUsuario(usuario);
 		cliente.setTienda(tienda);
 		cliente.setAceptaMarketing(false);
-		cliente.setEmail(cliente.getUsuario().getEmail());
+		cliente.setEmail(usuario.getEmail());
 		clientes.save(cliente);
 
 		Producto producto = new Producto();

@@ -163,10 +163,9 @@ class AuthDurabilityTest {
 
 		Usuario objetivo = nuevoUsuario("cliente-reset-" + tag);
 		Cliente cliente = new Cliente();
-		cliente.setUsuario(objetivo);
 		cliente.setTienda(tienda);
 		cliente.setAceptaMarketing(false);
-		cliente.setEmail(cliente.getUsuario().getEmail());
+		cliente.setEmail(objetivo.getEmail());
 		clientes.save(cliente);
 		// F3: el reseteo exige membresía staff; el objetivo es operador.
 		TiendaUsuario vinculoObjetivo = new TiendaUsuario();

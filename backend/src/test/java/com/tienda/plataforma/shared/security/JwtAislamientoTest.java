@@ -65,7 +65,6 @@ class JwtAislamientoTest {
 		comprador.setEmailVerificado(true);
 		usuarios.save(comprador);
 		Cliente cliente = new Cliente();
-		cliente.setUsuario(comprador);
 		cliente.setTienda(tienda);
 		cliente.setEmail(comprador.getEmail());
 		cliente.setAceptaMarketing(false);

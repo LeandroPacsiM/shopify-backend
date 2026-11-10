@@ -21,18 +21,15 @@ import com.tienda.plataforma.auth.dto.ChallengeResponse;
 import com.tienda.plataforma.auth.dto.ConfirmarTotpRequest;
 import com.tienda.plataforma.auth.dto.CredencialesRequest;
 import com.tienda.plataforma.auth.dto.LoginRequest;
-import com.tienda.plataforma.auth.dto.RegistroRequest;
 import com.tienda.plataforma.auth.dto.RegistroAdministrativoRequest;
 import com.tienda.plataforma.auth.dto.RegistroResponse;
 import com.tienda.plataforma.auth.dto.TokensResponse;
 import com.tienda.plataforma.auth.dto.TotpConfirmadoResponse;
 import com.tienda.plataforma.auth.dto.TotpLoginRequest;
 import com.tienda.plataforma.auth.entity.CodigoRecuperacion;
-import com.tienda.plataforma.auth.entity.Rol;
 import com.tienda.plataforma.auth.entity.Sesion;
 import com.tienda.plataforma.auth.entity.TokenCuenta;
 import com.tienda.plataforma.auth.entity.Usuario;
-import com.tienda.plataforma.auth.entity.UsuarioRol;
 import com.tienda.plataforma.auth.repository.CodigoRecuperacionRepository;
 import com.tienda.plataforma.auth.repository.SesionRepository;
 import com.tienda.plataforma.auth.repository.TokenCuentaRepository;
@@ -46,14 +43,8 @@ import com.tienda.plataforma.shared.auditoria.AuditoriaService;
 import com.tienda.plataforma.shared.mail.MailService;
 import com.tienda.plataforma.shared.security.CryptoService;
 import com.tienda.plataforma.shared.security.JwtService;
-import com.tienda.plataforma.tenants.entity.Cliente;
-import com.tienda.plataforma.tenants.entity.Tienda;
 import com.tienda.plataforma.tenants.entity.TiendaUsuario;
-import com.tienda.plataforma.tenants.repository.ClienteRepository;
-import com.tienda.plataforma.tenants.repository.TiendaRepository;
 import com.tienda.plataforma.tenants.repository.TiendaUsuarioRepository;
-
-import jakarta.persistence.EntityManager;
 
 /** RF-AUTH-01/02/03: registro, TOTP, login, refresh rotado (Flujo 1 de 05, diagrama 04). */
 @Service
@@ -73,8 +64,6 @@ public class AuthService {
 
 	private final UsuarioRepository usuarios;
 	private final UsuarioRolRepository usuarioRoles;
-	private final ClienteRepository clientes;
-	private final TiendaRepository tiendas;
 	private final TiendaUsuarioRepository tiendaUsuarios;
 	private final CodigoRecuperacionRepository codigos;
 	private final SesionRepository sesiones;
@@ -84,22 +73,18 @@ public class AuthService {
 	private final TotpService totpService;
 	private final CryptoService cryptoService;
 	private final JwtService jwtService;
-	private final EntityManager entityManager;
 	private final AuditoriaService auditoria;
 	private final SecureRandom aleatorio = new SecureRandom();
 
 	public AuthService(UsuarioRepository usuarios, UsuarioRolRepository usuarioRoles,
-			ClienteRepository clientes, TiendaRepository tiendas,
 			TiendaUsuarioRepository tiendaUsuarios,
 			CodigoRecuperacionRepository codigos, SesionRepository sesiones,
 			TokenCuentaRepository tokens, MailService correo,
 			PasswordEncoder passwordEncoder, TotpService totpService,
-			CryptoService cryptoService, JwtService jwtService, EntityManager entityManager,
+			CryptoService cryptoService, JwtService jwtService,
 			AuditoriaService auditoria) {
 		this.usuarios = usuarios;
 		this.usuarioRoles = usuarioRoles;
-		this.clientes = clientes;
-		this.tiendas = tiendas;
 		this.tiendaUsuarios = tiendaUsuarios;
 		this.codigos = codigos;
 		this.sesiones = sesiones;
@@ -109,7 +94,6 @@ public class AuthService {
 		this.totpService = totpService;
 		this.cryptoService = cryptoService;
 		this.jwtService = jwtService;
-		this.entityManager = entityManager;
 		this.auditoria = auditoria;
 	}
 
@@ -134,58 +118,6 @@ public class AuthService {
 		usuario.setTotpHabilitado(false);
 		usuario.setIntentosFallidos(0);
 		usuarios.save(usuario);
-
-		emitirToken(usuario, TokenCuenta.VERIFICACION, VERIFICACION_TTL,
-				"Verifica tu email",
-				"Usa este código para verificar tu email (vale 24h):");
-
-		return new RegistroResponse(usuario.getId(), email, true);
-	}
-
-	/**
-	 * Registro legacy pre-B (RF-AUTH-01 original): crea usuario + CUSTOMER +
-	 * rol global en la tienda del slug. Deprecado en F3; los compradores
-	 * nuevos usan passwordless (RF-AUTH-10) y el staff usa
-	 * `registrarAdministrativo` (RF-AUTH-09). Se conserva hasta F4.
-	 */
-	@Deprecated
-	@Transactional
-	public RegistroResponse registrar(RegistroRequest req) {
-		String email = req.email().trim().toLowerCase();
-		if (usuarios.existsByEmail(email)) {
-			throw new ConflictoException("email en uso");
-		}
-		Tienda tienda = tiendas.findBySlug(req.tiendaSlug())
-				.orElseThrow(() -> new NoEncontradoException("tienda"));
-
-		Usuario usuario = new Usuario();
-		usuario.setEmail(email);
-		usuario.setPasswordHash(passwordEncoder.encode(req.password()));
-		usuario.setNombre(req.nombre());
-		usuario.setApellido(req.apellido());
-		usuario.setActivo(true);
-		usuario.setEmailVerificado(false);
-		usuario.setTotpHabilitado(false);
-		usuario.setIntentosFallidos(0);
-		usuarios.save(usuario);
-
-		Cliente cliente = new Cliente();
-		cliente.setUsuario(usuario);
-		cliente.setTienda(tienda);
-		cliente.setEmail(email);
-		cliente.setNombre(req.nombre());
-		cliente.setApellido(req.apellido());
-		cliente.setAceptaMarketing(false);
-		clientes.save(cliente);
-
-		Rol rolCliente = entityManager
-				.createQuery("select r from Rol r where r.nombre = :n", Rol.class)
-				.setParameter("n", "cliente")
-				.getSingleResult();
-		UsuarioRol asignacion = new UsuarioRol();
-		asignacion.setUsuario(usuario);
-		asignacion.setRol(rolCliente);
-		usuarioRoles.save(asignacion);
 
 		emitirToken(usuario, TokenCuenta.VERIFICACION, VERIFICACION_TTL,
 				"Verifica tu email",

@@ -14,14 +14,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.tienda.plataforma.auth.dto.RegistroRequest;
+import com.tienda.plataforma.auth.dto.RegistroAdministrativoRequest;
 import com.tienda.plataforma.auth.entity.TokenCuenta;
 import com.tienda.plataforma.auth.entity.Usuario;
 import com.tienda.plataforma.auth.repository.TokenCuentaRepository;
 import com.tienda.plataforma.auth.repository.UsuarioRepository;
 import com.tienda.plataforma.auth.service.AuthService;
 import com.tienda.plataforma.shared.exception.NoAutorizadoException;
-import com.tienda.plataforma.tenants.entity.Tienda;
 
 /** RF-AUTH-07: verificación email + reset por tokens de un solo uso (V15). Rollback al final. */
 @SpringBootTest
@@ -37,8 +36,6 @@ class TokenCuentaTest {
 	TokenCuentaRepository tokens;
 	@Autowired
 	PasswordEncoder passwordEncoder;
-	@Autowired
-	com.tienda.plataforma.tenants.repository.TiendaRepository tiendas;
 
 	@Test
 	void verificarEmailUnSoloUso() {
@@ -107,13 +104,9 @@ class TokenCuentaTest {
 
 	private String nuevoUsuario(String prefijo) {
 		String tag = UUID.randomUUID().toString().substring(0, 8);
-		Tienda tienda = new Tienda();
-		tienda.setNombre(prefijo + tag);
-		tienda.setSlug(prefijo + tag);
-		tienda.setActiva(true);
-		tiendas.save(tienda);
 		String email = prefijo + tag + "@example.com";
-		authService.registrar(new RegistroRequest(email, "Secreta123", "Tok", "Test", tienda.getSlug()));
+		authService.registrarAdministrativo(
+				new RegistroAdministrativoRequest(email, "Secreta123", "Tok", "Test"));
 		return email;
 	}
 

@@ -1,6 +1,6 @@
 # ADR-016 — Desacople total de autenticación (Alternativa B)
 
-Fecha: 2026-11-10. Estado: aprobado (plan v5). No borra ADRs anteriores.
+Fecha: 2026-11-10. Estado: aplicado en F4 (V20–V23). No borra ADRs anteriores.
 
 ## Contexto
 
@@ -38,5 +38,10 @@ todos, sin guest) queda derogada para CUSTOMER; sigue vigente para staff.
 - `tienda_usuarios.rol_tienda` admite `store_owner` (V21, índice ≤1) + trigger
   diferido de obligatoriedad (V22, con advisory lock por tienda).
 - `usuario_roles`: solo `super_admin`; se eliminan las filas `cliente`/`admin`/`operador`.
-- Historial intacto: todo cuelga de `clientes.id`, que no cambia; cero purgas.
-- Feature flag `auth.customer.enabled=false` hasta completar el cutover.
+- Historial intacto: todo cuelga de `clientes.id`, que no cambia; cero purgas (D4, con informe de huérfanos en `docs/informes/usuarios-huerfanos.sql`).
+- Cutover completo en F4: `auth.customer.enabled=true` por defecto (kill-switch por entorno).
+- Retención del respaldo: 90 días desde V23; borrado con la migración V24 (futura,
+  ver `docs/informes/drop_respaldo_futuro.sql`); acceso solo superusuario
+  por psql; la app no tiene entidad ni repositorio (test
+  `RespaldoAusenteTest`); en prod el dueño de la tabla debe ser distinto
+  del usuario de conexión de Spring Boot.

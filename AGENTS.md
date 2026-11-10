@@ -3,9 +3,9 @@
 ## Stack decidido (no adivinar)
 
 - Backend: Spring Boot 4.1.2 + Java 17 en `backend/` (`com.tienda.plataforma`, deps web/security/jpa/validation/flyway/postgres/googleauth). No scaffoldear Express por los PDFs de `Clases/`.
-- BD dev (ahora, todo local): PostgreSQL local + pgAdmin. Fuente de verdad del esquema: `shopify_db/database/01_esquema_shopify.sql` + `shopify_db/database/migrations/V2–V19.sql` (59 tablas, 86 FKs, 71 índices explícitos). Prod (al final): BD en Supabase, despliegue en Render; se apunta vía `DATABASE_URL` / connection string del proyecto.
+- BD dev (ahora, todo local): PostgreSQL local + pgAdmin. Fuente de verdad del esquema: `shopify_db/database/01_esquema_shopify.sql` + `shopify_db/database/migrations/V2–V23.sql` (63 tablas, triggers V22 de owner). Prod (al final): BD en Supabase, despliegue en Render; se apunta vía `DATABASE_URL` / connection string del proyecto.
 - Frontend: un solo SPA (React + Vite propuesto) con 3 route trees: `/`+`/admin` (staff), `/tienda` (CUSTOMER), `/checkout` (aislado). Ver `diagramas/01-arquitectura-frontend.md`. No partir en 2 apps sin pedirlo.
-- Terminología canónica (ADR-016, plan v5 aprobado 2026-11-10): STORE_OWNER (1 por tienda) / ADMIN / OPERATOR / SUPER_ADMIN (solo Ops) / CUSTOMER (passwordless por código, `aud=tienda-storefront`). 2FA TOTP solo para staff; decisión A derogada para CUSTOMER. Tiendas nuevas: el creador nace STORE_OWNER (actual: `admin`).
+- Terminología canónica aplicada en F4 (ADR-016): STORE_OWNER (1 por tienda) / ADMIN / OPERATOR / SUPER_ADMIN (solo Ops) / CUSTOMER (passwordless por código, `aud=tienda-storefront`). 2FA TOTP solo para staff. Tiendas nuevas: el creador nace STORE_OWNER. `POST /auth/registro` eliminado; staff por `/auth/registro-administrativo`.
 - 2FA TOTP obligatorio para staff, sin guest checkout (decisión A, vigente para staff). Login staff: password → challenge TOTP → JWT corto + refresh rotado.
 - Pagos: mock con interfaz adaptador primero, Stripe test después. No construir 4 adaptadores simétricos (Yape/Culqi no son Stripe).
 
@@ -33,7 +33,7 @@
 
 - `actualizado_en` lo refrescan triggers V7; `registros_auditoria` la escribe el backend en la misma transacción (`06`, `08-observaciones.md:160-166`).
 - `CASCADE` destruye historia: borrar `pedidos` borra pagos/eventos/reembolsos/envíos. Desde V4: reseñas `SET NULL` y ubicaciones `RESTRICT`. Prohibir DELETE de pedidos/productos/ubicaciones con historial; cancelar/archivar/desactivar en su lugar.
-- Desde V5 `clientes.usuario_id` y `pedidos.cliente_id` son NOT NULL + `RESTRICT` (actual pre-B; objetivo B: `email` por tienda, `usuario_id` nullable en V20 y eliminado en V23 con respaldo blindado): la BD bloquea borrar usuarios/clientes con historial. La baja es desactivar o anonimizar (GDPR), nunca DELETE.
+- `clientes` sin `usuario_id` (V23, respaldo `_respaldo_cliente_usuario` 90 días); `pedidos.cliente_id` NOT NULL + `RESTRICT`: la BD bloquea borrar clientes con historial. La baja es anonimizar (GDPR), nunca DELETE. Huérfanos: se conservan (D4, informe en `docs/informes/usuarios-huerfanos.sql`).
 - Referencias sin FK: `metacampos(entidad,entidad_id)`, `registros_auditoria(entidad,entidad_id)`, `tasas_impuesto` huérfana (no enlaza a checkout/pedidos). Validar existencia y tipo en aplicación.
 - Faltaban UNIQUEs que las migraciones V3/V6 ya imponen en BD (dirección por tipo, descuento por pedido, reseña por cliente-producto, línea por envío, refs externas por pasarela/pago). El backend conserva: validar pertenencia cruzada, sumas contra totales, transiciones y concurrencia con bloqueo.
 - `sesiones.token_legacy` en claro solo durante la transición V8 → cutover a `token_hash` + `familia_id`/`revocado_en`. Nunca loguear tokens, secretos ni `pago_eventos.payload` completo.

@@ -141,7 +141,7 @@ Todas las tablas tienen `id BIGSERIAL PRIMARY KEY`. Además de las claves primar
 | `permisos` | `nombre` | Evita nombres de permiso duplicados. |
 | `rol_permisos` | `uq_rol_permiso (rol_id, permiso_id)` | Evita asignaciones repetidas. |
 | `usuario_roles` | `uq_usuario_rol (usuario_id, rol_id)` | Evita roles repetidos para un usuario. |
-| `clientes` | `usuario_id` | Un CUSTOMER por usuario; obligatorio desde V5 (actual pre-B; objetivo B: email por tienda, V20–V23). |
+| `clientes` | `email` por tienda | `UNIQUE(tienda_id, email)` (V20). `usuario_id` eliminado en V23 (respaldo `_respaldo_cliente_usuario`). |
 | `sesiones` | `token_hash` | Solo se guarda el hash; el original solo lo tiene el cliente (V8). |
 | `usuario_codigos_recuperacion` | `uq_usuario_codigo (usuario_id, codigo_hash)` | Evita códigos duplicados por usuario (V2). |
 | `proveedores` | `slug` | Mantiene única la ruta del proveedor. |
@@ -184,7 +184,7 @@ La unicidad de combinaciones completas de opciones, una ficha de inventario por 
 |---|---|
 | `usuarios` | `chk_totp_coherente` (V2): si `totp_habilitado = TRUE`, exige secreto y confirmación; `intentos_fallidos >= 0`. |
 | `tienda_pasarelas` | `modo` solo admite `test` o `vivo` (V10). |
-| `tienda_usuarios` | `rol_tienda` solo admite `admin` u `operador` (V12, actual pre-B; objetivo B: + `store_owner`, V21–V22). |
+| `tienda_usuarios` | `rol_tienda` admite `store_owner`/`admin`/`operador` (V21); exactamente 1 owner por tienda (índice parcial + trigger diferido, V22). |
 | `productos` | `estado` solo admite `borrador`, `activo` o `archivado`. |
 | `producto_variantes` | `precio >= 0`; `precio_comparativo >= 0` y `peso_gramos >= 0` cuando se informan. |
 | `niveles_inventario` | `disponible >= 0` y `reservado >= 0`. |

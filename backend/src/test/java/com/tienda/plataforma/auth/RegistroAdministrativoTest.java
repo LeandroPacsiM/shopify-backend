@@ -1,7 +1,6 @@
 package com.tienda.plataforma.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -19,7 +18,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.tienda.plataforma.auth.repository.UsuarioRolRepository;
-import com.tienda.plataforma.tenants.repository.ClienteRepository;
 
 /** RF-AUTH-09 (D1): identidad staff sin permisos, sin CUSTOMER, sin rol. */
 @SpringBootTest
@@ -30,8 +28,6 @@ class RegistroAdministrativoTest {
 
 	@Autowired
 	MockMvc mvc;
-	@Autowired
-	ClienteRepository clientes;
 	@Autowired
 	UsuarioRolRepository usuarioRoles;
 	@Autowired
@@ -48,7 +44,6 @@ class RegistroAdministrativoTest {
 				.andExpect(jsonPath("$.email").value(email));
 
 		Long usuarioId = usuarios.findByEmail(email).orElseThrow().getId();
-		assertTrue(clientes.findByUsuarioId(usuarioId).isEmpty());
 		assertEquals(List.of(), usuarioRoles.nombresDeRoles(usuarioId));
 
 		// La identidad sirve para enrolar TOTP (flujo staff intacto).

@@ -2,7 +2,6 @@ package com.tienda.plataforma.tenants.entity;
 
 import java.time.Instant;
 
-import com.tienda.plataforma.auth.entity.Usuario;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -11,7 +10,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
@@ -20,7 +18,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Perfil CUSTOMER de una tienda. Tabla `clientes` (V1/V5/V11 + email V20). */
+/** Perfil CUSTOMER de una tienda, sin vínculo con `usuarios` (V23, ADR-016). Tabla `clientes`. */
 @Entity
 @Table(name = "clientes", uniqueConstraints = @UniqueConstraint(columnNames = { "tienda_id", "email" }))
 @Getter
@@ -31,14 +29,6 @@ public class Cliente {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-
-	/**
-	 * Vínculo temporal con el ámbito staff (actual pre-B). Nullable desde V20;
-	 * se elimina en V23 (ADR-016). No usar para autorización de CUSTOMER.
-	 */
-	@OneToOne(fetch = FetchType.LAZY, optional = true)
-	@JoinColumn(name = "usuario_id", nullable = true, unique = false)
-	private Usuario usuario;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "tienda_id", nullable = false)

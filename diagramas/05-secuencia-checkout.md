@@ -13,7 +13,7 @@ sequenceDiagram
     Srv->>D: upsert línea (UNIQUE carrito+variante)
     S-->>C: 200 carrito
 
-    C->>K: POST /api/checkout/sesiones (JWT CUSTOMER; actual: +2FA, objetivo B: código verificado)
+    C->>K: POST /api/checkout/sesiones (JWT CUSTOMER verificado por código)
     K->>Srv: CheckoutService.crear (exige CUSTOMER; carrito→CUSTOMER; misma tienda o 422)
     Srv->>D: congela subtotal/impuestos/envío/descuentos/total
     K-->>C: 201 checkout pendiente

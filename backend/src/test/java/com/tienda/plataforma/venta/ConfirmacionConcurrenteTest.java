@@ -137,10 +137,9 @@ class ConfirmacionConcurrenteTest {
 		usuarios.save(usuario);
 
 		Cliente cliente = new Cliente();
-		cliente.setUsuario(usuario);
 		cliente.setTienda(tienda);
 		cliente.setAceptaMarketing(false);
-		cliente.setEmail(cliente.getUsuario().getEmail());
+		cliente.setEmail(usuario.getEmail());
 		clientes.save(cliente);
 
 		// V22: owner en la misma TX del fixture (commitea junto a la tienda).

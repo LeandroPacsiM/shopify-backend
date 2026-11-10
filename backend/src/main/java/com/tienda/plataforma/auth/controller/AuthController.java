@@ -22,7 +22,6 @@ import com.tienda.plataforma.auth.dto.CredencialesRequest;
 import com.tienda.plataforma.auth.dto.EmailRequest;
 import com.tienda.plataforma.auth.dto.LoginRequest;
 import com.tienda.plataforma.auth.dto.ChallengeResponse;
-import com.tienda.plataforma.auth.dto.RegistroRequest;
 import com.tienda.plataforma.auth.dto.RegistroAdministrativoRequest;
 import com.tienda.plataforma.auth.dto.RegistroResponse;
 import com.tienda.plataforma.auth.dto.ResetConfirmRequest;
@@ -55,13 +54,6 @@ public class AuthController {
 		this.authService = authService;
 		this.onboarding = onboarding;
 		this.cookieSecure = cookieSecure;
-	}
-
-	@PostMapping("/registro")
-	@ResponseStatus(HttpStatus.CREATED)
-	@Operation(summary = "Registra usuario + cliente + rol en la tienda del slug (actual pre-B, se depreca en F3)")
-	public RegistroResponse registro(@Valid @RequestBody RegistroRequest req) {
-		return authService.registrar(req);
 	}
 
 	@PostMapping("/registro-administrativo")

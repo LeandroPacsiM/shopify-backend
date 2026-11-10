@@ -108,10 +108,9 @@ class PagoCarrerasTest {
 		});
 
 		Cliente c = new Cliente();
-		c.setUsuario(usuario);
 		c.setTienda(tienda);
 		c.setAceptaMarketing(false);
-		c.setEmail(c.getUsuario().getEmail());
+		c.setEmail(usuario.getEmail());
 		cliente = clientes.save(c);
 
 		pedido = new Pedido();

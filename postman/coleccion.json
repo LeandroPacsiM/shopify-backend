@@ -5,23 +5,48 @@
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
-		{ "key": "baseUrl", "value": "http://localhost:8080" },
-		{ "key": "tiendaSlug", "value": "tienda-demo" },
-		{ "key": "accessToken", "value": "" },
-		{ "key": "carritoToken", "value": "", "description": "Se copia del campo token de 'ver carrito'" },
-		{ "key": "idempotencia", "value": "demo-0001", "description": "Rotar por cada reembolso nuevo; repetir para reintentar" }
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080"
+		},
+		{
+			"key": "tiendaSlug",
+			"value": "tienda-demo"
+		},
+		{
+			"key": "accessToken",
+			"value": ""
+		},
+		{
+			"key": "carritoToken",
+			"value": "",
+			"description": "Se copia del campo token de 'ver carrito'"
+		},
+		{
+			"key": "idempotencia",
+			"value": "demo-0001",
+			"description": "Rotar por cada reembolso nuevo; repetir para reintentar"
+		}
 	],
 	"item": [
 		{
 			"name": "Auth",
 			"item": [
 				{
-					"name": "registro",
+					"name": "registro administrativo (staff, sin permisos)",
 					"request": {
 						"method": "POST",
-						"url": "{{baseUrl}}/auth/registro",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\",\"nombre\":\"Cliente\",\"apellido\":\"Uno\",\"tiendaSlug\":\"{{tiendaSlug}}\"}" }
+						"url": "{{baseUrl}}/auth/registro-administrativo",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"email\":\"staff1@example.com\",\"password\":\"Secreta123\",\"nombre\":\"Staff\"}"
+						}
 					}
 				},
 				{
@@ -29,8 +54,16 @@
 					"request": {
 						"method": "POST",
 						"url": "{{baseUrl}}/auth/email/solicitar",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\"}" }
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"email\":\"cliente1@example.com\"}"
+						}
 					}
 				},
 				{
@@ -38,8 +71,16 @@
 					"request": {
 						"method": "POST",
 						"url": "{{baseUrl}}/auth/email/confirmar",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\"token\":\"PEGAR-CODIGO\"}" }
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"token\":\"PEGAR-CODIGO\"}"
+						}
 					}
 				},
 				{
@@ -47,8 +88,16 @@
 					"request": {
 						"method": "POST",
 						"url": "{{baseUrl}}/auth/password/solicitar",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\"}" }
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"email\":\"cliente1@example.com\"}"
+						}
 					}
 				},
 				{
@@ -56,8 +105,16 @@
 					"request": {
 						"method": "POST",
 						"url": "{{baseUrl}}/auth/password/confirmar",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\"token\":\"PEGAR-CODIGO\",\"password\":\"NuevaClave123\"}" }
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"token\":\"PEGAR-CODIGO\",\"password\":\"NuevaClave123\"}"
+						}
 					}
 				},
 				{
@@ -65,8 +122,16 @@
 					"request": {
 						"method": "POST",
 						"url": "{{baseUrl}}/auth/totp/iniciar",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\"}" }
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\"}"
+						}
 					}
 				},
 				{
@@ -74,8 +139,16 @@
 					"request": {
 						"method": "POST",
 						"url": "{{baseUrl}}/auth/totp/confirmar",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\",\"codigo\":\"123456\"}" }
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\",\"codigo\":\"123456\"}"
+						}
 					}
 				},
 				{
@@ -83,8 +156,16 @@
 					"request": {
 						"method": "POST",
 						"url": "{{baseUrl}}/auth/login",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\"}" }
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\"}"
+						}
 					}
 				},
 				{
@@ -92,8 +173,16 @@
 					"request": {
 						"method": "POST",
 						"url": "{{baseUrl}}/auth/login/totp",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\",\"codigo\":\"123456\"}" }
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\",\"codigo\":\"123456\"}"
+						}
 					},
 					"event": [
 						{
@@ -109,7 +198,10 @@
 				},
 				{
 					"name": "refresh (usa cookie, guarda accessToken)",
-					"request": { "method": "POST", "url": "{{baseUrl}}/auth/refresh" },
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/refresh"
+					},
 					"event": [
 						{
 							"listen": "test",
@@ -124,18 +216,83 @@
 				},
 				{
 					"name": "logout",
-					"request": { "method": "POST", "url": "{{baseUrl}}/auth/logout" }
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/logout"
+					}
 				},
 				{
-					"name": "crear tienda (onboarding, queda admin)",
+					"name": "crear tienda (onboarding, queda STORE_OWNER)",
 					"request": {
 						"method": "POST",
 						"url": "{{baseUrl}}/auth/tiendas",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"nombre\":\"Mi Tienda\",\"slug\":\"mi-tienda\"}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"nombre\":\"Mi Tienda\",\"slug\":\"mi-tienda\"}"
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Auth CUSTOMER",
+			"item": [
+				{
+					"name": "solicitar codigo (email)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/cliente/solicitar",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"tiendaSlug\":\"{{tiendaSlug}}\",\"email\":\"customer1@example.com\"}"
+						}
+					}
+				},
+				{
+					"name": "verificar codigo (crea perfil + JWT)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/cliente/verificar",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"tiendaSlug\":\"{{tiendaSlug}}\",\"email\":\"customer1@example.com\",\"codigo\":\"123456\"}"
+						}
+					}
+				},
+				{
+					"name": "refresh customer (cookie refresh_customer)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/cliente/refresh"
+					}
+				},
+				{
+					"name": "logout customer",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/cliente/logout"
 					}
 				}
 			]
@@ -149,8 +306,14 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/productos?q=",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -160,8 +323,14 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/productos/:slug",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -171,12 +340,27 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/carrito/lineas",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" },
-							{ "key": "X-Carrito-Token", "value": "{{carritoToken}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							},
+							{
+								"key": "X-Carrito-Token",
+								"value": "{{carritoToken}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"varianteId\":1,\"cantidad\":2}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"varianteId\":1,\"cantidad\":2}"
+						}
 					}
 				},
 				{
@@ -185,8 +369,14 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/pedidos",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -196,8 +386,14 @@
 						"method": "DELETE",
 						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -207,7 +403,10 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/carrito",
 						"header": [
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -217,8 +416,14 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/pedidos/:id/tracking",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -228,8 +433,14 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/perfil",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -239,11 +450,23 @@
 						"method": "PATCH",
 						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/perfil",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"nombre\":\"Ana\",\"apellido\":\"Paz\",\"telefono\":\"999888777\",\"aceptaMarketing\":true}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"nombre\":\"Ana\",\"apellido\":\"Paz\",\"telefono\":\"999888777\",\"aceptaMarketing\":true}"
+						}
 					}
 				},
 				{
@@ -252,8 +475,14 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/wishlist",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -263,8 +492,14 @@
 						"method": "DELETE",
 						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/wishlist/:productoId",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -274,11 +509,23 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/resenas",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"productoId\":1,\"calificacion\":5,\"titulo\":\"Buena\",\"comentario\":\"Me sirvió\"}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"productoId\":1,\"calificacion\":5,\"titulo\":\"Buena\",\"comentario\":\"Me sirvió\"}"
+						}
 					}
 				},
 				{
@@ -287,8 +534,14 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/api/storefront/{{tiendaSlug}}/cuenta/resenas",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -338,11 +591,23 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/checkout/orden",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"carritoToken\":\"mi-carrito\",\"direccionEnvioId\":1,\"direccionFacturacionId\":1,\"metodoEnvioId\":1,\"codigoDescuento\":null,\"codigosDescuento\":[],\"emailContacto\":\"cliente1@example.com\",\"telefonoContacto\":\"999888777\",\"notasCliente\":\"Llamar antes de entregar\"}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"carritoToken\":\"mi-carrito\",\"direccionEnvioId\":1,\"direccionFacturacionId\":1,\"metodoEnvioId\":1,\"codigoDescuento\":null,\"codigosDescuento\":[],\"emailContacto\":\"cliente1@example.com\",\"telefonoContacto\":\"999888777\",\"notasCliente\":\"Llamar antes de entregar\"}"
+						}
 					}
 				},
 				{
@@ -351,8 +616,14 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/checkout/:id/confirmar",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -362,11 +633,23 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/checkout/pedidos/:pedidoId/pagos",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"pasarela\":\"mock\",\"idempotencia\":\"demo-0001\"}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"pasarela\":\"mock\",\"idempotencia\":\"demo-0001\"}"
+						}
 					}
 				}
 			]
@@ -380,8 +663,14 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/api/admin/pedidos?estado=pagado&page=0&size=20",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -391,11 +680,23 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/admin/productos",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"titulo\":\"Gorra Demo\",\"slug\":\"gorra-demo\",\"estado\":\"borrador\"}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"titulo\":\"Gorra Demo\",\"slug\":\"gorra-demo\",\"estado\":\"borrador\"}"
+						}
 					}
 				},
 				{
@@ -404,11 +705,23 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/admin/colecciones",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"titulo\":\"Ofertas\",\"slug\":\"ofertas\"}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"titulo\":\"Ofertas\",\"slug\":\"ofertas\"}"
+						}
 					}
 				},
 				{
@@ -417,11 +730,23 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/admin/colecciones/:id/productos",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"productoId\":1,\"posicion\":0}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"productoId\":1,\"posicion\":0}"
+						}
 					}
 				},
 				{
@@ -430,11 +755,23 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/admin/etiquetas",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"nombre\":\"Oferta\",\"slug\":\"oferta\"}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"nombre\":\"Oferta\",\"slug\":\"oferta\"}"
+						}
 					}
 				},
 				{
@@ -443,11 +780,23 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/admin/etiquetas/:id/productos",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"productoId\":1}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"productoId\":1}"
+						}
 					}
 				},
 				{
@@ -456,8 +805,14 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/admin/usuarios/:id/2fa/reset",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -467,8 +822,14 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/api/admin/usuarios",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -478,11 +839,23 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/admin/usuarios",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"email\":\"operador@example.com\",\"rol\":\"operador\"}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"email\":\"operador@example.com\",\"rol\":\"operador\"}"
+						}
 					}
 				},
 				{
@@ -491,11 +864,23 @@
 						"method": "PATCH",
 						"url": "{{baseUrl}}/api/admin/usuarios/:id/rol",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"rol\":\"admin\"}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"rol\":\"admin\"}"
+						}
 					}
 				},
 				{
@@ -504,8 +889,14 @@
 						"method": "DELETE",
 						"url": "{{baseUrl}}/api/admin/usuarios/:id",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -515,8 +906,14 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/api/admin/pasarelas",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -526,11 +923,23 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/admin/pasarelas",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"codigo\":\"stripe\",\"clavePublica\":\"pk_test_...\",\"secreto\":\"sk_test_...;whsec_...\",\"modo\":\"test\"}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"codigo\":\"stripe\",\"clavePublica\":\"pk_test_...\",\"secreto\":\"sk_test_...;whsec_...\",\"modo\":\"test\"}"
+						}
 					}
 				},
 				{
@@ -539,8 +948,14 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/api/admin/notificaciones?page=0&size=20",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -550,8 +965,14 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/api/admin/notificaciones/no-leidas",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -561,8 +982,14 @@
 						"method": "PATCH",
 						"url": "{{baseUrl}}/api/admin/notificaciones/:id/leer",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -572,8 +999,14 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/api/admin/facturacion",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -583,11 +1016,23 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/admin/facturacion/suscribir",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"plan\":\"mensual\"}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"plan\":\"mensual\"}"
+						}
 					}
 				},
 				{
@@ -596,8 +1041,14 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/admin/facturacion/cancelar",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -607,8 +1058,14 @@
 						"method": "PATCH",
 						"url": "{{baseUrl}}/api/admin/pedidos/:id/cancelar",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -618,11 +1075,23 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/admin/pedidos/:id/envios",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"transportistaId\":null,\"ubicacionOrigenId\":1,\"items\":[{\"pedidoItemId\":1,\"cantidad\":1}]}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"transportistaId\":null,\"ubicacionOrigenId\":1,\"items\":[{\"pedidoItemId\":1,\"cantidad\":1}]}"
+						}
 					}
 				},
 				{
@@ -631,12 +1100,27 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/admin/pagos/:id/reembolsos",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" },
-							{ "key": "Idempotency-Key", "value": "{{idempotencia}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							},
+							{
+								"key": "Idempotency-Key",
+								"value": "{{idempotencia}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"monto\":10.00,\"motivo\":\"devolución demo\"}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"monto\":10.00,\"motivo\":\"devolución demo\"}"
+						}
 					}
 				},
 				{
@@ -645,8 +1129,14 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/api/admin/resenas?aprobada=false",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -656,8 +1146,14 @@
 						"method": "PATCH",
 						"url": "{{baseUrl}}/api/admin/resenas/:id/aprobar",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -667,11 +1163,23 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/admin/inventario/ubicaciones",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"nombre\":\"Central\",\"ciudad\":\"Lima\",\"pais\":\"PE\"}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"nombre\":\"Central\",\"ciudad\":\"Lima\",\"pais\":\"PE\"}"
+						}
 					}
 				},
 				{
@@ -680,8 +1188,14 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/api/admin/inventario/niveles?varianteId=1",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						]
 					}
 				},
@@ -691,11 +1205,44 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/admin/inventario/movimientos",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" },
-							{ "key": "X-Tienda-Slug", "value": "{{tiendaSlug}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"varianteId\":1,\"ubicacionId\":1,\"tipo\":\"entrada\",\"cantidad\":10}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"varianteId\":1,\"ubicacionId\":1,\"tipo\":\"entrada\",\"cantidad\":10}"
+						}
+					}
+				},
+				{
+					"name": "transferir propiedad (solo STORE_OWNER)",
+					"request": {
+						"method": "PATCH",
+						"url": "{{baseUrl}}/api/admin/tienda/propietario",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"nuevoOwnerId\":2}"
+						}
 					}
 				}
 			]
@@ -708,7 +1255,12 @@
 					"request": {
 						"method": "GET",
 						"url": "{{baseUrl}}/api/ops/tiendas?page=0&size=20",
-						"header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						]
 					}
 				},
 				{
@@ -716,7 +1268,33 @@
 					"request": {
 						"method": "GET",
 						"url": "{{baseUrl}}/api/ops/auditoria?page=0&size=20",
-						"header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						]
+					}
+				},
+				{
+					"name": "confirmar STORE_OWNER (verificacion fuera de banda)",
+					"request": {
+						"method": "PATCH",
+						"url": "{{baseUrl}}/api/ops/tiendas/1/propietario",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"usuarioId\":2}"
+						}
 					}
 				}
 			]
@@ -729,8 +1307,16 @@
 					"request": {
 						"method": "POST",
 						"url": "{{baseUrl}}/api/webhooks/pagos/mock",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\"eventId\":\"evt-demo-0001\",\"transaccionId\":\"tx-demo-0001\",\"estado\":\"aprobado\"}" }
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"eventId\":\"evt-demo-0001\",\"transaccionId\":\"tx-demo-0001\",\"estado\":\"aprobado\"}"
+						}
 					}
 				},
 				{
@@ -739,10 +1325,19 @@
 						"method": "POST",
 						"url": "{{baseUrl}}/api/webhooks/pagos/stripe",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Stripe-Signature", "value": "t=1,v1=FIRMA" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Stripe-Signature",
+								"value": "t=1,v1=FIRMA"
+							}
 						],
-						"body": { "mode": "raw", "raw": "{\"id\":\"evt-demo-stripe\",\"type\":\"payment_intent.succeeded\",\"data\":{\"object\":{\"id\":\" demo-tx\",\"amount\":11440}}}" }
+						"body": {
+							"mode": "raw",
+							"raw": "{\"id\":\"evt-demo-stripe\",\"type\":\"payment_intent.succeeded\",\"data\":{\"object\":{\"id\":\" demo-tx\",\"amount\":11440}}}"
+						}
 					}
 				},
 				{
@@ -750,8 +1345,16 @@
 					"request": {
 						"method": "POST",
 						"url": "{{baseUrl}}/api/webhooks/facturacion",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\"eventId\":\"evt-fact-0001\",\"suscripcionId\":\"sub_test_1\",\"tipo\":\"suscripcion.pagada\",\"firma\":\"t=1,v1=FIRMA\",\"cuerpo\":\"{}\"}" }
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"eventId\":\"evt-fact-0001\",\"suscripcionId\":\"sub_test_1\",\"tipo\":\"suscripcion.pagada\",\"firma\":\"t=1,v1=FIRMA\",\"cuerpo\":\"{}\"}"
+						}
 					}
 				}
 			]

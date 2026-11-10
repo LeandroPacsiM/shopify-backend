@@ -1,0 +1,15 @@
+body { font-family: system-ui, sans-serif; margin: 1.5rem; color: #222; }
+header h1 { margin-bottom: 0.2rem; }
+main { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+section { border: 1px solid #ccc; border-radius: 8px; padding: 1rem; }
+.endpoint code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 4px; }
+.hint { color: #666; font-size: 0.85rem; }
+.pasos > li { margin-bottom: 1.2rem; }
+.pasos h3 { margin: 0 0 0.3rem; }
+input { margin: 0.15rem 0; padding: 0.3rem; }
+input[readonly] { background: #f7f7f7; width: 24rem; max-width: 100%; }
+button { padding: 0.35rem 0.8rem; cursor: pointer; }
+button.sec { background: #eee; }
+.log { background: #111; color: #cfc; padding: 0.8rem; border-radius: 6px; max-height: 22rem; overflow: auto; white-space: pre-wrap; font-size: 0.8rem; }
+footer { margin-top: 1rem; color: #666; }

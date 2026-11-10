@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo Auth — Plataforma Tiendas (Pepito)</title>
+<link rel="stylesheet" href="demo-auth.css">
+</head>
+<body>
+<header>
+  <h1>Demo Auth — la historia de Pepito</h1>
+  <p>
+    Backend: <input id="baseUrl" size="28" value="http://localhost:8080"> 
+    <span class="hint">Levanta el backend con perfil <code>local</code> antes de usar esta página.
+    Códigos de email/CUSTOMER salen en el log del backend (modo prueba).</span>
+  </p>
+</header>
+
+<main>
+  <!-- ============ STAFF ============ -->
+  <section>
+    <h2>Staff — Pepito vende café</h2>
+    <ol class="pasos">
+      <li>
+        <h3>1. Se registra (sin permisos)</h3>
+        <p class="endpoint"><code>POST /auth/registro-administrativo</code></p>
+        <input id="s-email" placeholder="email" value="pepito@example.com">
+        <input id="s-pass" type="password" placeholder="password (8+)">
+        <input id="s-nombre" placeholder="nombre" value="Pepito">
+        <button data-action="registro">Registrar</button>
+      </li>
+      <li>
+        <h3>2. Verifica su email</h3>
+        <p class="endpoint"><code>POST /auth/email/confirmar</code> <span class="hint">(código del log del backend)</span></p>
+        <input id="s-etoken" placeholder="código del correo">
+        <button data-action="email-confirmar">Confirmar email</button>
+        <button data-action="email-solicitar" class="sec">Reenviar código</button>
+      </li>
+      <li>
+        <h3>3. Activa su 2FA (una sola vez)</h3>
+        <p class="endpoint"><code>POST /auth/totp/iniciar</code> → <code>POST /auth/totp/confirmar</code></p>
+        <button data-action="totp-iniciar">Iniciar (devuelve URL otpauth)</button>
+        <p class="hint">Pega la URL en tu app autenticadora, o mete el secreto a mano:</p>
+        <input id="s-secreto" readonly placeholder="secreto TOTP (sale al iniciar)">
+        <input id="s-codigo1" placeholder="primer código (6 dígitos)">
+        <button data-action="totp-confirmar">Confirmar (da backup codes)</button>
+      </li>
+      <li>
+        <h3>4. Entra: password → challenge</h3>
+        <p class="endpoint"><code>POST /auth/login</code> (no da sesión, solo challenge)</p>
+        <button data-action="login">Login</button>
+      </li>
+      <li>
+        <h3>5. Canjea el challenge + código por el JWT</h3>
+        <p class="endpoint"><code>POST /auth/login/totp</code> <span class="hint">(repite email + password + código del minuto)</span></p>
+        <input id="s-codigo2" placeholder="código 2FA (o backup)">
+        <label class="hint"><input type="checkbox" id="s-es-backup"> es backup code</label>
+        <button data-action="login-totp">Verificar y entrar</button>
+      </li>
+      <li>
+        <h3>6. Crea su tienda (nace STORE_OWNER)</h3>
+        <p class="endpoint"><code>POST /auth/tiendas</code> <span class="hint">(usa el JWT, guárdalo en memoria)</span></p>
+        <input id="s-tienda" placeholder="nombre" value="Café de Pepito">
+        <input id="s-slug" placeholder="slug" value="cafe-de-pepito">
+        <button data-action="crear-tienda">Crear tienda</button>
+      </li>
+      <li>
+        <h3>7. Sesión</h3>
+        <p class="endpoint"><code>POST /auth/refresh</code> / <code>POST /auth/logout</code> <span class="hint">(cookie HttpOnly)</span></p>
+        <button data-action="refresh">Refresh</button>
+        <button data-action="logout" class="sec">Logout</button>
+      </li>
+    </ol>
+    <h3>Diario staff</h3>
+    <pre id="log-staff" class="log"></pre>
+  </section>
+
+  <!-- ============ CUSTOMER ============ -->
+  <section>
+    <h2>CUSTOMER — María compra (passwordless)</h2>
+    <ol class="pasos">
+      <li>
+        <h3>1. Pide su código (el perfil aún no existe)</h3>
+        <p class="endpoint"><code>POST /auth/cliente/solicitar</code></p>
+        <input id="c-slug" placeholder="tiendaSlug" value="tienda-demo">
+        <input id="c-email" placeholder="email" value="maria@example.com">
+        <button data-action="c-solicitar">Solicitar código</button>
+      </li>
+      <li>
+        <h3>2. Verifica (aquí nace el perfil + JWT)</h3>
+        <p class="endpoint"><code>POST /auth/cliente/verificar</code> <span class="hint">(código de 6 dígitos del log)</span></p>
+        <input id="c-codigo" placeholder="código">
+        <button data-action="c-verificar">Verificar y entrar</button>
+      </li>
+      <li>
+        <h3>3. Sesión</h3>
+        <p class="endpoint"><code>POST /auth/cliente/refresh</code> / <code>POST /auth/cliente/logout</code></p>
+        <button data-action="c-refresh">Refresh</button>
+        <button data-action="c-logout" class="sec">Logout</button>
+      </li>
+    </ol>
+    <h3>Diario CUSTOMER</h3>
+    <pre id="log-customer" class="log"></pre>
+  </section>
+</main>
+
+<footer>
+  <p>JWTs solo en memoria (nunca en <code>localStorage</code>). Refresh via cookie HttpOnly (<code>refresh</code> staff, <code>refresh_customer</code> CUSTOMER).</p>
+</footer>
+
+<script src="demo-auth.js"></script>
+</body>
+</html>

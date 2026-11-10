@@ -2,7 +2,7 @@
 
 ```mermaid
 sequenceDiagram
-    actor C as Cliente
+    actor C as Customer
     participant S as StorefrontController
     participant K as CheckoutController
     participant Srv as Services
@@ -13,8 +13,8 @@ sequenceDiagram
     Srv->>D: upsert línea (UNIQUE carrito+variante)
     S-->>C: 200 carrito
 
-    C->>K: POST /api/checkout/sesiones (JWT cliente + 2FA)
-    K->>Srv: CheckoutService.crear (exige cliente; carrito→cliente; misma tienda o 422)
+    C->>K: POST /api/checkout/sesiones (JWT CUSTOMER; actual: +2FA, objetivo B: código verificado)
+    K->>Srv: CheckoutService.crear (exige CUSTOMER; carrito→CUSTOMER; misma tienda o 422)
     Srv->>D: congela subtotal/impuestos/envío/descuentos/total
     K-->>C: 201 checkout pendiente
 
@@ -25,6 +25,6 @@ sequenceDiagram
 ```
 
 Notas:
-- Sin guest (V5): checkout y pedido exigen `cliente_id`; el carrito sí puede ser anónimo.
-- Coherencia tenant (RF-TENANT): pedido, cliente, checkout, dirección, descuento y método de la misma `tienda_id`; si no, 422 sin cambios parciales.
+- Sin guest (V5): checkout y pedido exigen `cliente_id` del CUSTOMER; el carrito sí puede ser anónimo.
+- Coherencia tenant (RF-TENANT): pedido, CUSTOMER, checkout, dirección, descuento y método de la misma `tienda_id`; si no, 422 sin cambios parciales.
 - Totales se recalculan en servidor; el navegador nunca es fuente de verdad.

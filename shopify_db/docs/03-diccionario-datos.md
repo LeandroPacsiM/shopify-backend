@@ -75,18 +75,19 @@ Este documento describe las 59 tablas (V1 en `database/01_esquema_shopify.sql` +
 
 ## clientes
 
-**Descripción:** Guarda la información comercial del comprador, vinculada obligatoriamente a una cuenta de usuario desde V5 (sin guest checkout).
+**Descripción:** Perfil CUSTOMER por tienda (actual pre-B: vinculado obligatoriamente a una cuenta de usuario desde V5, sin guest checkout). Objetivo B (V20–V23, ADR-016): `email` UNIQUE por tienda, `usuario_id` nullable transitorio y eliminado, sesiones propias.
 
 | Campo | Tipo | Restricciones | Nulo | Descripción |
 |---|---|---|---|---|
-| id | BIGSERIAL | PK | No | Identificador del cliente. |
+| id | BIGSERIAL | PK | No | Identificador del CUSTOMER. |
 | tienda_id | BIGINT | FK a tiendas(id) ON DELETE RESTRICT | No | Tienda propietaria (V11). |
-| usuario_id | BIGINT | UNIQUE; FK a usuarios(id) ON DELETE RESTRICT | No | Cuenta de usuario asociada; el vínculo es único y obligatorio (V5). Borrar el usuario se bloquea. |
-| nombre | VARCHAR(100) | — | Sí | Nombre comercial o de pila del comprador. |
-| apellido | VARCHAR(100) | — | Sí | Apellido del comprador. |
+| usuario_id | BIGINT | UNIQUE (actual); FK a usuarios(id) ON DELETE RESTRICT | No (actual) → Sí transitorio (V20) → eliminado (V23) | Vínculo único y obligatorio solo en estado actual (V5). |
+| email | VARCHAR(255) | UNIQUE compuesto (tienda_id, email) | No | Email normalizado del CUSTOMER (V20). |
+| nombre | VARCHAR(100) | — | Sí | Nombre comercial o de pila del CUSTOMER. |
+| apellido | VARCHAR(100) | — | Sí | Apellido del CUSTOMER. |
 | telefono | VARCHAR(30) | — | Sí | Número telefónico de contacto. |
-| acepta_marketing | BOOLEAN | DEFAULT FALSE | No | Indica si el cliente autorizó comunicaciones de mercadotecnia. |
-| creado_en | TIMESTAMPTZ | DEFAULT NOW() | No | Fecha y hora de registro del cliente. |
+| acepta_marketing | BOOLEAN | DEFAULT FALSE | No | Indica si el CUSTOMER autorizó comunicaciones de mercadotecnia. |
+| creado_en | TIMESTAMPTZ | DEFAULT NOW() | No | Fecha y hora de registro del CUSTOMER. |
 
 ## direcciones
 
@@ -113,14 +114,14 @@ Este documento describe las 59 tablas (V1 en `database/01_esquema_shopify.sql` +
 |---|---|---|---|---|
 | id | BIGSERIAL | PK | No | Identificador de la sesión. |
 | usuario_id | BIGINT | FK a usuarios(id) ON DELETE CASCADE | No | Usuario autenticado. |
-| token_hash | VARCHAR(255) | UNIQUE | Sí | SHA-256 del refresh opaco; el original solo lo tiene el cliente. Añadida en V8 (NULL hasta el cutover). |
+| token_hash | VARCHAR(255) | UNIQUE | Sí | SHA-256 del refresh opaco; el original solo lo tiene el titular de la sesión (sesiones staff; CUSTOMER usa `cliente_sesiones` en objetivo B). Añadida en V8 (NULL hasta el cutover). |
 | token_legacy | VARCHAR(255) | UNIQUE | Sí | Token V1 en claro, en transición; se elimina tras el cutover (V8, nullable desde V13). |
 | familia_id | UUID | — | Sí | Cadena de rotación del login. Añadida en V8. |
 | revocado_en | TIMESTAMPTZ | — | Sí | Revocación (logout, rotación, robo). Añadida en V8. |
 | reemplazado_por_id | BIGINT | FK a sesiones(id) ON DELETE SET NULL | Sí | Siguiente sesión de la cadena. Añadida en V8. |
 | motivo_revocacion | VARCHAR(50) | — | Sí | Motivo de la revocación. Añadida en V8. |
 | ip | VARCHAR(45) | — | Sí | Dirección IP de origen. |
-| user_agent | VARCHAR(255) | — | Sí | Identificación del cliente o navegador. |
+| user_agent | VARCHAR(255) | — | Sí | Identificación del agente o navegador. |
 | expira_en | TIMESTAMPTZ | — | No | Momento de expiración de la sesión. |
 | creado_en | TIMESTAMPTZ | DEFAULT NOW() | No | Momento de creación de la sesión. |
 
@@ -806,14 +807,14 @@ Este documento describe las 59 tablas (V1 en `database/01_esquema_shopify.sql` +
 
 ## tienda_usuarios
 
-**Descripción:** Rol de un usuario dentro de una tienda. Tabla añadida en la migración V12.
+**Descripción:** Rol staff de un usuario dentro de una tienda. Tabla añadida en la migración V12. Actual: `admin`/`operador`. Objetivo B (V21–V22): `store_owner` (exactamente 1) / `admin` / `operador`.
 
 | Campo | Tipo | Restricciones | Nulo | Descripción |
 |---|---|---|---|---|
 | id | BIGSERIAL | PK | No | Identificador de la asignación. |
 | tienda_id | BIGINT | FK a tiendas(id) ON DELETE CASCADE; UNIQUE compuesto uq_tienda_usuario (tienda_id, usuario_id) | No | Tienda del rol. |
 | usuario_id | BIGINT | FK a usuarios(id) ON DELETE CASCADE; UNIQUE compuesto uq_tienda_usuario (tienda_id, usuario_id) | No | Usuario con rol en la tienda. |
-| rol_tienda | VARCHAR(20) | CHECK (rol_tienda IN ('admin', 'operador')) | No | Rol dentro de la tienda; `super_admin` va en `usuario_roles` global. |
+| rol_tienda | VARCHAR(20) | CHECK actual `('admin','operador')`; objetivo B `('store_owner','admin','operador')` + índice ≤1 + trigger ≥1 (V21–V22) | No | Rol dentro de la tienda; SUPER_ADMIN va en `usuario_roles` global. |
 | creado_en | TIMESTAMPTZ | DEFAULT NOW() | No | Fecha y hora de la asignación. |
 
 ## suscripciones

@@ -57,7 +57,7 @@ Este es el diagrama que estaba en `shopify_db/docs/01-arquitectura.md`. Represen
 
 ```mermaid
 flowchart LR
-    U[Compradores y operadores] --> FE[Frontend web]
+    U[CUSTOMERs y staff] --> FE[Frontend web]
 
     subgraph APP[Render]
         BE[Backend Java Spring Boot]
@@ -89,7 +89,7 @@ Reglas de ese modelo:
 
 Problemas de este `00` original:
 
-1. Mezcla comprador y operador en un solo `Frontend web`.
+1. Mezcla CUSTOMER y OPERATOR en un solo `Frontend web` (terminología actualizada por ADR-016; el texto original decía "comprador y operador").
 2. No separa Storefront / Admin / Checkout (decisión final: se mantiene Supabase + Render).
 4. Expone una sola API genérica en vez de namespaces por superficie.
 
@@ -108,7 +108,7 @@ Problemas de este `00` original:
 
 - `usuario_codigos_recuperacion` (backup codes 2FA) — aplicada en V2.
 - `tokens_cuenta` (verificación email / reset password) — aplicada en V15.
-- `notificaciones` (eventos para usuario/admin) — aplicada en V16.
+- `notificaciones` (eventos para el staff) — aplicada en V16.
 
 #### `pedidos` (contacto y notas — aplicado en V17)
 
@@ -129,7 +129,7 @@ Problemas de este `00` original:
 
 #### Seed propuesto
 
-- Roles: `admin`, `operador`, `cliente`.
+- Roles: `admin`, `operador`, `cliente`. (Histórico pre-B; canónicos en ADR-016: STORE_OWNER/ADMIN/OPERATOR/SUPER_ADMIN/CUSTOMER.)
 - Usuarios demo, catálogo, inventario, cupones, gateway mock, carrier mock.
 
 ### 1.5. Secuencia de diagramas propuesta
@@ -167,7 +167,7 @@ Propuesta actualizada (ver Parte 2):
 
 No. El diagrama `00` no representa a **Shopify como plataforma**: representa **una tienda única “tipo Shopify”**, que es lo que un merchant ve y opera. Y la caja `Frontend web` es la parte que más se aleja de la realidad: Shopify no tiene un solo frontend, tiene varias superficies separadas.
 
-Como diagrama de contexto de *nuestro* proyecto sirve, pero está incompleto en un punto: mezcla comprador y administrador en un solo `Frontend web` (decisión final de infra: se mantiene Supabase + Render).
+Como diagrama de contexto de *nuestro* proyecto sirve, pero está incompleto en un punto: mezcla CUSTOMER y staff en un solo `Frontend web` (decisión final de infra: se mantiene Supabase + Render).
 
 ### 2.2. Backend real de Shopify (investigación)
 
@@ -232,9 +232,9 @@ No obliga a desplegar tres apps. Puede ser **un solo SPA con tres route trees** 
 
 ```mermaid
 flowchart LR
-    subgraph ACT["Actores"]
-        CLI["Cliente"]
-        OPE["Administrador / operador"]
+    subgraph ACT["Actores (ADR-016)"]
+        CLI["CUSTOMER"]
+        OPE["STORE_OWNER / ADMIN / OPERATOR"]
     end
 
     subgraph FE["Frontend — React + Vite (propuesto)"]
@@ -302,6 +302,8 @@ Dos caminos:
 - **B) Guest checkout con verificación por email:** más parecido a Shopify, pero contradice “2FA para todos”.
 
 Recomendación: **A**, y documentarlo como desviación deliberada respecto a Shopify.
+
+> Actualización ADR-016: la decisión A sigue vigente para staff, pero queda **derogada para CUSTOMER**: el passwordless por código de email es la vía B (verificación por email) aplicada a compradores.
 
 ### 2.8. Pendientes de decisión
 

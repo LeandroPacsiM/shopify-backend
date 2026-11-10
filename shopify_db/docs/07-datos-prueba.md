@@ -10,7 +10,7 @@ La fuente de verdad estructural es `database/01_esquema_shopify.sql` más `datab
 
 Como mínimo funcional se recomienda reunir los siguientes escenarios:
 
-1. **Identidad y cliente:** un operador y un usuario con perfil de cliente, con una dirección sintética.
+1. **Identidad y CUSTOMER:** un OPERATOR y un CUSTOMER con email propio, con una dirección sintética. (Estado actual pre-B: el CUSTOMER demo cuelga de un `usuario`; objetivo B: email propio sin `usuario_id`.)
 2. **Catálogo comprable:** un proveedor, un producto activo, dos opciones y dos variantes con SKU, precio y combinaciones de valores distintas.
 3. **Inventario:** una ubicación, un artículo de inventario por variante, niveles de stock y movimientos de entrada.
 4. **Compra:** un carrito convertido con dos líneas y una sesión de checkout completada, con importes coherentes.
@@ -27,13 +27,13 @@ Las cantidades son una guía para una demostración pequeña, no una obligación
 
 | Tabla o grupo | Cantidad sugerida | Propósito |
 |---|---:|---|
-| `usuarios` | 3 | Operador, administrador y cliente. |
+| `usuarios` | 3 | OPERATOR, ADMIN y el titular del CUSTOMER (actual pre-B). |
 | `tiendas` | 2 | Tienda Demo y Tienda Demo Dos (V10). |
 | `tienda_usuarios` | 1 | Admin de la tienda dos (V12); el resto de roles van en el backend. |
 | `usuario_codigos_recuperacion` | 0 | Sin seed: se generan al enrolar TOTP. |
 | `roles`, `permisos` | 3 y 5 | Distinguir administración, operación y compra. |
 | `rol_permisos`, `usuario_roles` | 8 y 3 | Demostrar autorización muchos a muchos sin duplicar asignaciones. |
-| `clientes`, `direcciones` | 2 y 3 | Un cliente vinculado a usuario y otro invitado; direcciones de envío y facturación. |
+| `clientes`, `direcciones` | 2 y 3 | Un CUSTOMER vinculado a usuario (actual pre-B; objetivo B: email propio) y otro invitado; direcciones de envío y facturación. |
 | `sesiones` | 2 | Una vigente y una expirada, ambas con tokens exclusivamente de demostración. |
 | `registros_auditoria` | 4 | Altas y cambios de estado con JSON anterior y nuevo. |
 | `proveedores` | 2 | Comprobar agrupación y borrado lógico por `activo`. |
@@ -70,7 +70,7 @@ Las cantidades son una guía para una demostración pequeña, no una obligación
 | `descuentos`, `pedido_descuentos` | 2 y 2 | Porcentaje aplicado y monto fijo sin uso. |
 | `descuento_productos`, `descuento_colecciones` | 2 y 1 | Restricciones de alcance de descuentos. |
 | `resenas` | 4 | Calificaciones de 1 a 5, aprobadas y pendientes. |
-| `listas_deseos`, `lista_deseo_items` | 2 y 3 | Favoritos de ambos clientes. |
+| `listas_deseos`, `lista_deseo_items` | 2 y 3 | Favoritos de ambos CUSTOMERs. |
 
 ## Orden de inserción y dependencias
 
@@ -94,8 +94,8 @@ El siguiente orden respeta las 86 claves foráneas. Las tablas de una misma etap
 
 ## Convenciones para datos ficticios
 
-- Usar nombres como `Cliente Demo`, `Operador Demo` y `Proveedor Ficticio`; no copiar nombres, teléfonos, documentos ni direcciones de personas reales.
-- Usar correos bajo `example.com`, por ejemplo `cliente.demo@example.com`. Ese dominio está reservado para ejemplos.
+- Usar nombres como `Customer Demo`, `Operador Demo` y `Proveedor Ficticio`; no copiar nombres, teléfonos, documentos ni direcciones de personas reales.
+- Usar correos bajo `example.com`, por ejemplo `customer.demo@example.com`. Ese dominio está reservado para ejemplos.
 - Usar URL e imágenes bajo `https://example.com/` y transportistas o códigos de tracking inexistentes con prefijo `DEMO`.
 - Usar direcciones imposibles o neutras, como `Calle Ficticia 123`, `Ciudad Demo`, `País Demo`, y teléfonos `000000000` o `NULL`.
 - Para IP, utilizar rangos de documentación como `192.0.2.0/24` y `198.51.100.0/24`.
@@ -133,7 +133,7 @@ Get-ChildItem database/migrations/V*.sql | Sort-Object Name | ForEach-Object {
 }
 ```
 
-En el backend, Flyway aplica ese mismo orden al arrancar (V1 del classpath + `filesystem:../shopify_db/database/migrations`). La migración repetible `R__roles_base.sql` inserta los roles del RBAC (`super_admin`, `admin`, `operador`, `cliente`); es dato de referencia, no seed de demostración.
+En el backend, Flyway aplica ese mismo orden al arrancar (V1 del classpath + `filesystem:../shopify_db/database/migrations`). La migración repetible `R__roles_base.sql` inserta los roles del RBAC (`super_admin`, `admin`, `operador`, `cliente`) — actual pre-B; objetivo B: solo `super_admin` global; es dato de referencia, no seed de demostración.
 
 El comentario final de la base de datos utiliza `current_database()`, por lo que se aplica correctamente tanto a `shopify_db_demo` como a cualquier otro nombre de base. El comando presupone que PostgreSQL está instalado, que `createdb` y `psql` están en `PATH` y que el usuario tiene permiso para crear la base. La contraseña debe proporcionarse mediante el mecanismo seguro configurado en PostgreSQL, no escribirse en el script.
 
@@ -164,18 +164,20 @@ psql -U postgres -d shopify_db_demo -v ON_ERROR_STOP=1 -f seed_demo.local.sql
 4. La transacción termina con `COMMIT`. Si cualquier sentencia falla, `ON_ERROR_STOP=1` detiene `psql` y el cierre de conexión revierte la transacción incompleta. Para ensayar sin conservar datos, se puede sustituir temporalmente el `COMMIT` final por `ROLLBACK`.
 
 ```sql
+-- Seed demo con esquema ACTUAL pre-B (clientes.usuario_id obligatorio).
+-- Objetivo B (V20): clientes.email propio; el bloque se actualizará en F1.
 \set ON_ERROR_STOP on
 
 BEGIN;
 
--- Usuarios y cliente: las credenciales son marcadores ficticios, no hashes utilizables.
+-- Usuarios y CUSTOMER: las credenciales son marcadores ficticios, no hashes utilizables.
 INSERT INTO usuarios (email, password_hash, nombre, apellido)
 VALUES ('operador.demo@example.com', 'demo-no-es-un-hash-operador', 'Operador', 'Demo')
 RETURNING id AS id_operador \gset
 
 INSERT INTO usuarios (email, password_hash, nombre, apellido)
-VALUES ('cliente.demo@example.com', 'demo-no-es-un-hash-cliente', 'Cliente', 'Demo')
-RETURNING id AS id_usuario_cliente \gset
+VALUES ('customer.demo@example.com', 'demo-no-es-un-hash-customer', 'Customer', 'Demo')
+RETURNING id AS id_usuario_customer \gset
 
 -- Tenant demo (V11): todo lo pre multi-tenant cae aquí.
 INSERT INTO tiendas (nombre, slug, descripcion)
@@ -183,7 +185,7 @@ VALUES ('Tienda Demo', 'tienda-demo', 'Tenant inicial ficticio')
 RETURNING id AS id_tienda \gset
 
 INSERT INTO clientes (usuario_id, tienda_id, nombre, apellido, telefono, acepta_marketing)
-VALUES (:id_usuario_cliente, :id_tienda, 'Cliente', 'Demo', '000000000', FALSE)
+VALUES (:id_usuario_customer, :id_tienda, 'Customer', 'Demo', '000000000', FALSE)
 RETURNING id AS id_cliente \gset
 
 INSERT INTO direcciones (
@@ -540,14 +542,14 @@ VALUES ('admin2.demo@example.com', 'demo-no-es-hash-admin2', 'Admin', 'Dos')
 RETURNING id AS id_admin2 \gset
 
 INSERT INTO usuarios (email, password_hash, nombre, apellido)
-VALUES ('cliente2.demo@example.com', 'demo-no-es-hash-cliente2', 'Cliente', 'Dos')
-RETURNING id AS id_usuario_cliente2 \gset
+VALUES ('customer2.demo@example.com', 'demo-no-es-hash-customer2', 'Customer', 'Dos')
+RETURNING id AS id_usuario_customer2 \gset
 
 INSERT INTO tienda_usuarios (tienda_id, usuario_id, rol_tienda)
 VALUES (:id_tienda2, :id_admin2, 'admin');
 
 INSERT INTO clientes (usuario_id, tienda_id, nombre, apellido, telefono, acepta_marketing)
-VALUES (:id_usuario_cliente2, :id_tienda2, 'Cliente', 'Dos', '000000001', FALSE)
+VALUES (:id_usuario_customer2, :id_tienda2, 'Customer', 'Dos', '000000001', FALSE)
 RETURNING id AS id_cliente2 \gset
 
 INSERT INTO ubicaciones (tienda_id, nombre, direccion, ciudad, pais)

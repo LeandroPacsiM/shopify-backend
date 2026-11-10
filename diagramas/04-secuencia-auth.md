@@ -1,6 +1,8 @@
-# 04 — Secuencia Auth + 2FA (base: RF-AUTH, Flujo 1 de `05`, V2/V8)
+# 04 — Secuencia Auth + 2FA (base: RF-AUTH, Flujo 1 de `05`, V2/V8; objetivo B: RF-AUTH-09/10, ADR-016)
 
-## Registro + enrolamiento
+> Secciones "staff": estado actual. Sección "CUSTOMER": objetivo B (flag `auth.customer.enabled=false` hasta el cutover).
+
+## Registro staff + enrolamiento (actual; objetivo B: `POST /auth/registro-administrativo` sin permisos)
 
 ```mermaid
 sequenceDiagram
@@ -22,7 +24,7 @@ sequenceDiagram
     C-->>U: 200 enrolado (códigos una sola vez)
 ```
 
-## Login + refresh
+## Login staff + refresh (actual; `aud=tienda-admin` en objetivo B)
 
 ```mermaid
 sequenceDiagram
@@ -44,6 +46,26 @@ sequenceDiagram
     S->>D: TX: revoca vieja (reemplazado_por) + crea nueva misma familia
     C-->>U: JWT + refresh nuevos
     Note over C,D: reuso de refresh rotado = revocar familia entera
+```
+
+## Auth CUSTOMER passwordless (objetivo B, RF-AUTH-10, `aud=tienda-storefront`)
+
+```mermaid
+sequenceDiagram
+    actor C as Customer
+    participant CC as ClienteAuthController
+    participant S as ClienteAuthService
+    participant D as PostgreSQL
+
+    C->>CC: POST /auth/cliente/solicitar (tiendaSlug, email)
+    CC->>S: rate-limit (tienda,email,IP) + intervalo 60s
+    S->>D: TX: invalida previos + guarda HMAC(código 6 dígitos, TTL 10min)
+    C-->>C: código por correo (perfil AÚN no creado)
+    C->>CC: POST /auth/cliente/verificar (código)
+    S->>S: hash HMAC OK? (5 intentos, FOR UPDATE, sin bloqueo permanente)
+    S->>D: TX: crea Cliente si no existe + sesión (token_hash, familia nueva)
+    CC-->>C: JWT 15min (`aud=tienda-storefront`) + refresh 7 días rotado
+    Note over CC,D: mismo email permitido en staff y CUSTOMER, incluso misma tienda
 ```
 
 ## Reset admin (RF-AUTH-06)
@@ -73,7 +95,7 @@ sequenceDiagram
     M->>C: POST /auth/tiendas (JWT verificado + TOTP, nombre, slug)
     C->>S: crear(usuarioId)
     S->>D: slug único? (409 si existe)
-    S->>D: TX: tienda activa + vínculo admin + suscripción pendiente + auditoría
+    S->>D: TX: tienda activa + vínculo STORE_OWNER + suscripción pendiente + auditoría
     C-->>M: 201 tienda (sin checkout hasta suscribir/activar)
     Note over C,D: un usuario puede crear varias tiendas
 ```

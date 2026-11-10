@@ -10,37 +10,37 @@
 
 Sí, lo que describes sí se entiende como RF. Lo formalizo así:
 
-### Actores
+### Actores (canónicos, ADR-016)
 
-- **SuperAdmin:** dueño del software/plataforma. Usa el panel Ops (`/ops-core-management`). Ve lista y agregados de tiendas, nunca sus datos internos.
-- **Propietario:** admin (dueño) / operador (empleado) de SU tienda. Usa la plataforma principal + Admin de su tienda. No compra.
-- **Cliente final (cliente de tienda, no propietario):** compra en el Storefront de una tienda. No entra al Admin.
+- **SUPER_ADMIN:** administrador general de la plataforma. Usa el panel Ops (`/ops-core-management`). Ve lista y agregados de tiendas, nunca sus datos internos.
+- **STORE_OWNER / ADMIN / OPERATOR:** propietario único / administrador / empleado de SU tienda. Usan la plataforma principal + Admin de su tienda.
+- **CUSTOMER:** comprador del Storefront de una tienda. No entra al Admin.
 
-### RF Plataforma principal (solo propietario, por tienda)
+### RF Plataforma principal (solo staff de la tienda, por tienda)
 
-- `RF-PLAT-01`: landing/marketing de la plataforma solo orientada al propietario.
-- `RF-PLAT-02`: login propietario con 2FA TOTP obligatorio.
+- `RF-PLAT-01`: landing/marketing de la plataforma solo orientada al comerciante.
+- `RF-PLAT-02`: login staff con 2FA TOTP obligatorio.
 - `RF-PLAT-03`: recuperación de cuenta (email + backup codes).
-- `RF-PLAT-04`: acceso a `/admin` solo con rol `admin` / `operador` de ESA tienda + 2FA verificado.
-- `RF-PLAT-05`: el propietario gestiona el catálogo, inventario, pedidos, cupones, envíos, reseñas (moderar) y usuarios de SU tienda; jamás ve otra.
-- `RF-PLAT-06`: el propietario NO compra desde la plataforma principal.
+- `RF-PLAT-04`: acceso a `/admin` solo con STORE_OWNER / ADMIN / OPERATOR de ESA tienda + 2FA verificado.
+- `RF-PLAT-05`: el staff gestiona el catálogo, inventario, pedidos, cupones, envíos, reseñas (moderar) y equipo de SU tienda; jamás ve otra.
+- `RF-PLAT-06`: el staff NO compra desde la plataforma principal con su JWT staff.
 
-### RF Ops (solo super_admin — dueño de la plataforma, alcance estilo org-admin Plus)
+### RF Ops (solo SUPER_ADMIN, alcance estilo org-admin Plus)
 
 - `RF-OPS-01`: panel en ruta ofuscada `/ops-core-management` (falso 404 + IP si no autorizado; excepción deliberada, Shopify no ofusca).
-- `RF-OPS-02`: tenants — ver lista y métricas agregadas (plan, estado, ingresos totales), suspender/reactivar por compliance con motivo registrado + apelaciones, transferir dueño. Prohibido leer o modificar pedidos, clientes, productos o credenciales de tiendas.
+- `RF-OPS-02`: tenants — ver lista y métricas agregadas (plan, estado, ingresos totales), suspender/reactivar por compliance con motivo registrado + apelaciones, confirmar STORE_OWNER (plan v5). Prohibido leer o modificar pedidos, CUSTOMERs, productos o credenciales de tiendas.
 - `RF-OPS-03`: negocio — ver planes por tenant, ingresos (MRR, trials, churn, suspendidos), crear/editar planes y precios sin tocar código.
 - `RF-OPS-04`: plataforma — usuarios y roles del equipo, pasarelas globales habilitadas, feature flags, modo mantenimiento y anuncios.
-- `RF-OPS-05`: soporte — si un merchant pide ayuda, él mismo otorga un rol `operador` temporal en SU tienda (él lo concede y revoca, todo auditado). El `super_admin` nunca entra directo a tiendas.
+- `RF-OPS-05`: soporte — si un merchant pide ayuda, él mismo otorga OPERATOR temporal en SU tienda (él lo concede y revoca, todo auditado). SUPER_ADMIN nunca entra directo a tiendas.
 
-### RF Storefront (solo cliente final)
+### RF Storefront (solo CUSTOMER)
 
 - `RF-STORE-01`: home, catálogo, búsqueda, detalle producto (PDP), solo accesibles en zona Storefront.
 - `RF-STORE-02`: carrito en Storefront.
 - `RF-STORE-03`: checkout en layout aislado (sin nav de tienda, sin links a admin).
-- `RF-STORE-04`: registro cliente + 2FA obligatorio (decisión A: sin guest checkout).
-- `RF-STORE-05`: cuenta cliente: perfil, direcciones, pedidos, tracking, wishlist, reseñas propias.
-- `RF-STORE-06`: el cliente NO ve ni entra al Admin ni a la landing del propietario como funcionalidad.
+- `RF-STORE-04`: (actual) registro CUSTOMER + 2FA obligatorio (decisión A: sin guest checkout). Objetivo B: passwordless por código (decisión A derogada para CUSTOMER).
+- `RF-STORE-05`: cuenta CUSTOMER: perfil, direcciones, pedidos, tracking, wishlist, reseñas propias.
+- `RF-STORE-06`: el CUSTOMER NO ve ni entra al Admin ni a la landing del comerciante como funcionalidad.
 
 ### Regla de separación
 
@@ -50,10 +50,10 @@ Sí, lo que describes sí se entiende como RF. Lo formalizo así:
 
 ```mermaid
 flowchart LR
-    subgraph ACTORES["Actores"]
-        SUP["SuperAdmin<br/>dueño plataforma"]
-        PROP["Propietario<br/>admin / operador de su tienda"]
-        CLI["Cliente final<br/>comprador de una tienda"]
+    subgraph ACTORES["Actores (ADR-016)"]
+        SUP["SUPER_ADMIN<br/>plataforma"]
+        PROP["STORE_OWNER / ADMIN / OPERATOR<br/>staff de su tienda"]
+        CLI["CUSTOMER<br/>comprador de una tienda"]
     end
 
     subgraph SPA["SPA único — React + Vite"]
@@ -77,10 +77,10 @@ flowchart LR
     CLI --> STORE
     CLI --> CHECK
 
-    OPS -->|JWT + 2FA + IP<br/>rol super_admin| API_OPS
-    LAND -->|JWT + 2FA<br/>rol admin/operador de la tienda| API_ADM
-    STORE -->|JWT + 2FA<br/>rol cliente de la tienda| API_SF
-    CHECK -->|JWT + 2FA<br/>rol cliente, sin caché| API_CK
+    OPS -->|JWT staff + 2FA + IP<br/>SUPER_ADMIN| API_OPS
+    LAND -->|JWT staff + 2FA<br/>STORE_OWNER/ADMIN/OPERATOR de la tienda| API_ADM
+    STORE -->|JWT CUSTOMER (objetivo B: passwordless)<br/>`aud=tienda-storefront`| API_SF
+    CHECK -->|JWT CUSTOMER, sin caché| API_CK
 
     API_OPS --> DB
     API_ADM --> DB
@@ -101,23 +101,23 @@ Lectura estilo Shopify real:
 flowchart TB
     APP["App.tsx<br/>router + guards + layout switch"]
 
-    APP --> PUB["/ (plataforma)<br/>landing propietario<br/>/login · /recuperar · /verificar-2fa"]
+    APP --> PUB["/ (plataforma)<br/>landing comerciante<br/>/login · /recuperar · /verificar-2fa"]
     APP --> TIENDA["/t/:slug/* (storefront por tienda)<br/>index, categoria, producto/:slug<br/>buscar, carrito, cuenta"]
     APP --> CK["/checkout/* (aislado)<br/>/checkout/informacion<br/>/checkout/envio<br/>/checkout/pago<br/>/checkout/revision<br/>/checkout/exito"]
     APP --> ADM["/admin/* (tienda activa)<br/>dashboard, productos<br/>inventario, pedidos<br/>cupones, envios, reseñas"]
-    APP --> OPS["/ops-core-management (super_admin)<br/>tenants, planes, auditoría<br/>falso 404 + IP si no autorizado"]
+    APP --> OPS["/ops-core-management (SUPER_ADMIN)<br/>tenants, planes, auditoría<br/>falso 404 + IP si no autorizado"]
 
-    PUB -.->|no requiere auth<br/>excepto login| G1["LayoutPlataforma<br/>header propietario"]
+    PUB -.->|no requiere auth<br/>excepto login| G1["LayoutPlataforma<br/>header comerciante"]
     TIENDA -.->|público excepto /cuenta y /carrito persistido<br/>tienda por :slug| G2["LayoutTienda<br/>header tienda, footer, SEO"]
-    CK -.->|requiere cliente + 2FA<br/>noindex, no-cache, sin nav| G3["LayoutCheckout<br/>pasos, resumen, timer reserva"]
-    ADM -.->|requiere admin/operador de la tienda + 2FA<br/>noindex| G4["LayoutAdmin<br/>sidebar, tablas, auditoría"]
-    OPS -.->|requiere super_admin + 2FA + IP<br/>falso 404 si no| G5["LayoutOps<br/>solo tenants/planes/auditoría, sin SEO"]
+    CK -.->|requiere CUSTOMER<br/>noindex, no-cache, sin nav| G3["LayoutCheckout<br/>pasos, resumen, timer reserva"]
+    ADM -.->|requiere STORE_OWNER/ADMIN/OPERATOR de la tienda + 2FA<br/>noindex| G4["LayoutAdmin<br/>sidebar, tablas, auditoría"]
+    OPS -.->|requiere SUPER_ADMIN + 2FA + IP<br/>falso 404 si no| G5["LayoutOps<br/>solo tenants/planes/auditoría, sin SEO"]
 ```
 
 ### Detalle de rutas propuesto
 
 ```text
-/                          -> LandingPlataforma (solo propietario, marketing + entrar)
+/                          -> LandingPlataforma (solo staff comerciante, marketing + entrar)
 /login                     -> Login (selector rol, luego 2FA)
 /verificar-2fa              -> VerificarTOTP
 /recuperar                 -> RecuperarCuenta
@@ -138,14 +138,14 @@ flowchart TB
 /admin/pedidos...          -> Pedidos, fulfillment, reembolsos
 /admin/cupones...          -> Descuentos
 /admin/envios...           -> Envíos y tracking
-/ops-core-management       -> Panel plataforma (super_admin; falso 404 + IP si no)
+/ops-core-management       -> Panel plataforma (SUPER_ADMIN; falso 404 + IP si no)
 ```
 
 ## 4. Flujo de compra solo en Storefront (sequence)
 
 ```mermaid
 sequenceDiagram
-    actor C as Cliente final
+    actor C as Customer
     participant S as Storefront /t/:slug
     participant K as Checkout /checkout
     participant B as Backend /api/checkout
@@ -174,18 +174,18 @@ La plataforma principal (`/` y `/admin`) nunca aparece en este flujo. Esa es la 
 |---|---|---|---|---|
 | `/`, `/login` | público | Plataforma | `/auth/*` | SEO solo landing |
 | `/t/:slug` pública | pública (lectura) | Tienda | `/api/storefront` GET + `tienda_id` | SEO sí, caché CDN sí |
-| `/t/:slug/cuenta`, `/carrito` | cliente de la tienda + 2FA | Tienda | `/api/storefront` | no-cache, noindex cuenta |
-| `/checkout/*` | cliente + 2FA obligatorio | Checkout aislado | `/api/checkout` | `noindex, no-store`, sin nav tienda |
-| `/admin/*` | admin/operador de la tienda + 2FA | Admin | `/api/admin` | `noindex, no-store`, auditoría |
-| `/ops-core-management` | super_admin + 2FA + IP | Ops | `/api/ops` | `noindex, no-store`, falso 404 si no autorizado |
+| `/t/:slug/cuenta`, `/carrito` | CUSTOMER de la tienda (actual: + 2FA; objetivo B: código verificado) | Tienda | `/api/storefront` | no-cache, noindex cuenta |
+| `/checkout/*` | CUSTOMER obligatorio (actual: + 2FA) | Checkout aislado | `/api/checkout` | `noindex, no-store`, sin nav tienda |
+| `/admin/*` | STORE_OWNER/ADMIN/OPERATOR de la tienda + 2FA | Admin | `/api/admin` | `noindex, no-store`, auditoría |
+| `/ops-core-management` | SUPER_ADMIN + 2FA + IP | Ops | `/api/ops` | `noindex, no-store`, falso 404 si no autorizado |
 
 Reglas:
 
-- Un JWT de `cliente` no abre `/admin`. Un JWT de `admin` no compra en `/checkout` (se bloquea por rol para evitar auto-pedidos del propietario).
+- Un JWT CUSTOMER no abre `/admin`. Un JWT staff no compra en `/checkout` con ese JWT (objetivo B: mundos separados; actual: se bloquea por rol).
 - Toda query lleva `tienda_id` derivado de la identidad + slug; jamás se acepta del request sin validar (anti-fuga, RF-TENANT-02).
 - Checkout no precarga bundles de Admin y viceversa (code splitting por route tree).
 - Tokens en `HttpOnly + Secure + SameSite=Lax`, rotación en `sesiones` (`token_hash`, `familia_id`, `revocado_en`).
-- 2FA TOTP: login password → challenge TOTP → JWT corto + refresh rotado. Backup codes en `usuario_codigos_recuperacion`.
+- 2FA TOTP staff: login password → challenge TOTP → JWT corto + refresh rotado. Backup codes en `usuario_codigos_recuperacion`. CUSTOMER objetivo B: passwordless sin TOTP.
 
 ## 6. Llamadas API por superficie
 

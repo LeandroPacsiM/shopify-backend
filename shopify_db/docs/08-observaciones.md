@@ -170,7 +170,7 @@ PostgreSQL crea índices para respaldar las restricciones `UNIQUE`. El esquema a
 - `usuarios.email`: `UNIQUE` y `idx_usuarios_email`;
 - `sesiones.token`: `UNIQUE` y `idx_sesiones_token`;
 - `producto_variantes.sku`: `UNIQUE` y `idx_variantes_sku`;
-- `clientes.usuario_id`: `UNIQUE` y `idx_clientes_usuario`.
+- `clientes.usuario_id`: `UNIQUE` y `idx_clientes_usuario`. (Actual pre-B; objetivo B: UNIQUE por `(tienda_id, email)`, V20.)
 
 También hay índices sobre el primer componente de claves únicas compuestas, como `idx_variante_opcion_valores_variante`, `idx_niveles_inventario_articulo`, `idx_producto_etiquetas_producto` e `idx_lista_deseo_items_lista`, que suelen quedar cubiertos por el índice del `UNIQUE` correspondiente.
 
@@ -184,7 +184,7 @@ También hay índices sobre el primer componente de claves únicas compuestas, c
 
 **Riesgo:** si se habilita checkout de invitado, la aplicación debe mantener la dirección en memoria o en la solicitud hasta crear el snapshot de `pedido_direcciones`; no puede guardarla anticipadamente como dirección de un cliente inexistente. Si se exige crear un cliente antes de guardar la dirección, el flujo deja de ser completamente anónimo.
 
-**Recomendación (histórica, ya decidida):** definir si el checkout de invitado forma parte del alcance. **Decidido: sin guest (decisión A) y aplicado en V5** — `pedidos.cliente_id` y `checkout_sesiones.cliente_id` son NOT NULL, el carrito anónimo sí se permite hasta el checkout. La dirección del pedido es un snapshot y no tiene FK hacia `direcciones`.
+**Recomendación (histórica, ya decidida):** definir si el checkout de invitado forma parte del alcance. **Decidido: sin guest (decisión A) y aplicado en V5** — `pedidos.cliente_id` y `checkout_sesiones.cliente_id` son NOT NULL, el carrito anónimo sí se permite hasta el checkout. La dirección del pedido es un snapshot y no tiene FK hacia `direcciones`. Actualización ADR-016: la decisión A sigue para staff; CUSTOMER usa passwordless por email.
 
 ## Campos duplicados y datos mínimos
 

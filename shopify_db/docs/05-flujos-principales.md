@@ -2,11 +2,11 @@
 
 Los diagramas describen orquestación de Spring Boot sobre PostgreSQL/Supabase y servicios externos. Las escrituras agrupadas como transacción son locales a la base de datos; una llamada a una API externa no participa en esa transacción y requiere confirmación, reintentos controlados y conciliación. Los estados usados para columnas con `CHECK` son exclusivamente los declarados en `database/01_esquema_shopify.sql`.
 
-## Flujo 1: Registro e inicio de sesión
+## Flujo 1: Registro e inicio de sesión staff (actual pre-B; CUSTOMER en RF-AUTH-10)
 
 ### Objetivo
 
-Crear la identidad de un comprador y, posteriormente, autenticar al usuario y establecer una sesión con sus roles y permisos.
+Crear la identidad staff y, posteriormente, autenticar al usuario y establecer una sesión con sus roles y permisos. Objetivo B: el registro staff no crea perfil CUSTOMER (RF-AUTH-09); CUSTOMER usa passwordless (RF-AUTH-10).
 
 ### Actores
 
@@ -22,7 +22,7 @@ Visitante, usuario registrado, backend Spring Boot y PostgreSQL/Supabase.
 flowchart TD
     A["Solicitud de registro, login o 2FA"] --> B{"¿Es registro?"}
     B -->|Sí| C["Validar email y crear hash de contraseña"]
-    C --> D["Transacción: usuario, cliente y asignación de rol"]
+    C --> D["Transacción: usuario y asignación de rol (actual: + cliente)"]
     D --> E["Enrolar TOTP: generar secreto y mostrar QR"]
     E --> F["Verificar primer código y habilitar 2FA"]
     B -->|No| G["Buscar usuario por email"]
@@ -41,7 +41,7 @@ flowchart TD
 ### Pasos
 
 1. En el registro, el backend normaliza el email y verifica su formato y los requisitos de contraseña antes de generar `password_hash` con Argon2id o BCrypt; nunca guarda la contraseña en texto plano.
-2. En una transacción inserta `usuarios` (con `email_verificado = FALSE` y `totp_habilitado = FALSE`), crea el `clientes` asociado y añade en `usuario_roles` el rol inicial autorizado por la configuración del negocio. La unicidad de `usuarios.email` y de `clientes.usuario_id` se aplica en la base; cualquier fallo revierte las tres operaciones.
+2. En una transacción inserta `usuarios` (con `email_verificado = FALSE` y `totp_habilitado = FALSE`) y añade en `usuario_roles` el rol inicial autorizado (actual pre-B: además crea el `clientes` asociado; objetivo B: el registro staff no crea CUSTOMER). La unicidad de `usuarios.email` se aplica en la base; cualquier fallo revierte las operaciones.
 3. En el enrolamiento TOTP genera el secreto, lo guarda cifrado y muestra el QR (`otpauth://`). Al verificar el primer código, en la misma transacción pone `totp_habilitado = TRUE`, `totp_confirmado_en` y genera los backup codes con hash en `usuario_codigos_recuperacion`. Sin enrolar no se crea sesión.
 4. En el login, busca el usuario por email, compara la contraseña con `password_hash` y exige `usuarios.activo = TRUE` y `bloqueado_hasta` pasado. Una respuesta genérica evita revelar si el email existe. Cada fallo suma `intentos_fallidos` y bloquea tras el umbral (p. ej. 5 intentos, 15 minutos).
 5. Con password válido y TOTP habilitado, exige el challenge: código TOTP (ventana ±1 paso) o backup code (marca `usado_en`). Si es válido, resetea `intentos_fallidos` y actualiza `ultimo_acceso`.
@@ -51,7 +51,7 @@ flowchart TD
 
 ### Posibles estados finales
 
-- Registro completado con `usuarios.activo = TRUE`, cliente y rol asociados, pero sin sesión hasta enrolar TOTP.
+- Registro completado con `usuarios.activo = TRUE` y rol asociado (actual pre-B: + CUSTOMER asociado), pero sin sesión hasta enrolar TOTP.
 - Enrolamiento completado con 2FA habilitado y backup codes emitidos.
 - Autenticación completada con sesión vigente (`token_hash` + familia), JWT corto y roles resueltos.
 - Registro, login o challenge rechazado o bloqueado sin cambios parciales; un usuario inactivo o bloqueado no obtiene sesión.
@@ -64,7 +64,7 @@ Configurar un producto, sus opciones y valores, y generar variantes comprables s
 
 ### Actores
 
-Administrador u operador autorizado, backend Spring Boot y PostgreSQL/Supabase.
+STORE_OWNER, ADMIN u OPERATOR autorizado, backend Spring Boot y PostgreSQL/Supabase.
 
 ### Tablas involucradas
 
@@ -104,11 +104,11 @@ flowchart TD
 
 ### Objetivo
 
-Crear o recuperar el carrito de un cliente o visitante y añadir una cantidad válida de una variante comprable.
+Crear o recuperar el carrito de un CUSTOMER o visitante y añadir una cantidad válida de una variante comprable.
 
 ### Actores
 
-Cliente autenticado o visitante, backend Spring Boot y PostgreSQL/Supabase.
+CUSTOMER autenticado o visitante, backend Spring Boot y PostgreSQL/Supabase.
 
 ### Tablas involucradas
 
@@ -118,7 +118,7 @@ Cliente autenticado o visitante, backend Spring Boot y PostgreSQL/Supabase.
 
 ```mermaid
 flowchart TD
-    A["Solicitud con token de carrito y variante"] --> B["Resolver cliente o visitante"]
+    A["Solicitud con token de carrito y variante"] --> B["Resolver CUSTOMER o visitante"]
     B --> C{"¿Existe carrito activo y autorizado?"}
     C -->|No| D["Crear carrito con token único"]
     C -->|Sí| E["Usar carrito existente"]
@@ -133,7 +133,7 @@ flowchart TD
 
 ### Pasos
 
-1. El backend identifica al cliente por su sesión o al visitante por el token del carrito. Para un visitante, `carritos.cliente_id` permanece nulo; `token` es obligatorio en ambos casos.
+1. El backend identifica al CUSTOMER por su sesión o al visitante por el token del carrito. Para un visitante, `carritos.cliente_id` permanece nulo; `token` es obligatorio en ambos casos.
 2. Recupera un carrito `activo` y no expirado, verificando token y titularidad. Si no existe, crea uno con moneda y, cuando corresponda, `expira_en`.
 3. Valida que el producto esté `activo`, la variante tenga `activo = TRUE` y la cantidad solicitada sea positiva. Consulta el precio vigente y, si `controla_stock = TRUE`, comprueba disponibilidad en las ubicaciones aplicables sin asumir que agregar al carrito ya reserva stock.
 4. Inserta `carrito_items` con el precio unitario calculado. Si la variante ya existe, la aplicación actualiza esa línea y su cantidad de forma atómica, apoyándose en `uq_carrito_variante` para impedir duplicados.
@@ -153,7 +153,7 @@ Preparar una sesión de compra con direcciones, envío, impuestos, descuentos y 
 
 ### Actores
 
-Cliente autenticado o visitante, backend Spring Boot y PostgreSQL/Supabase.
+CUSTOMER autenticado, backend Spring Boot y PostgreSQL/Supabase. (Actual pre-B: el checkout exige CUSTOMER con 2FA; objetivo B: CUSTOMER verificado por código.)
 
 ### Tablas involucradas
 
@@ -173,9 +173,9 @@ flowchart TD
 
 ### Pasos
 
-1. El backend valida que el carrito esté `activo`, no haya expirado, tenga líneas y sea accesible para el cliente o el visitante que presenta su token.
+1. El backend valida que el carrito esté `activo`, no haya expirado, tenga líneas y sea accesible para el CUSTOMER autenticado.
 2. Vuelve a consultar variantes, precios y stock. No confía en los importes enviados por el navegador ni en el precio histórico de `carrito_items`.
-3. Verifica que las direcciones seleccionadas pertenezcan al cliente cuando corresponda y que el método de envío esté activo. Las claves foráneas de `checkout_sesiones` no comprueban esa titularidad.
+3. Verifica que las direcciones seleccionadas pertenezcan al CUSTOMER cuando corresponda y que el método de envío esté activo. Las claves foráneas de `checkout_sesiones` no comprueban esa titularidad.
 4. Calcula `subtotal`, `impuesto_total`, `envio_total`, `descuento_total` y `total` con precisión y redondeo coherentes. La aplicación determina las tasas y descuentos válidos; la base solo exige importes no negativos.
 5. Inserta o actualiza la sesión elegida en `checkout_sesiones` con estado `pendiente`, moneda y `expira_en`. Como `carrito_id` no es único, el backend evita operar simultáneamente con sesiones ambiguas del mismo carrito.
 6. Presenta el resumen. No se crea todavía un pedido ni se marca el carrito como convertido.
@@ -195,7 +195,7 @@ Convertir atómicamente un checkout válido en un pedido con líneas, direccione
 
 ### Actores
 
-Cliente autenticado o visitante, backend Spring Boot y PostgreSQL/Supabase.
+CUSTOMER autenticado, backend Spring Boot y PostgreSQL/Supabase.
 
 ### Tablas involucradas
 
@@ -498,7 +498,7 @@ Validar y aplicar uno o varios descuentos durante el checkout, recalcular los to
 
 ### Actores
 
-Cliente autenticado o visitante, backend Spring Boot y PostgreSQL/Supabase.
+CUSTOMER autenticado, backend Spring Boot y PostgreSQL/Supabase.
 
 ### Tablas involucradas
 

@@ -10,7 +10,7 @@ El modelo físico documentado procede exclusivamente de [`database/01_esquema_sh
 
 La arquitectura comprende:
 
-- un frontend web para compradores y usuarios administrativos;
+- un frontend web para CUSTOMERs y staff (terminología ADR-016);
 - un backend previsto en Java Spring Boot que concentra las reglas de negocio y el acceso a datos;
 - una base PostgreSQL administrada en Supabase como único almacén persistente de la aplicación;
 - integración HTTPS con Stripe, Culqi, Yape y PayPal como APIs externas de pago;
@@ -34,7 +34,7 @@ No se incluyen Redis, una segunda base de datos, un almacén de eventos independ
 
 ```mermaid
 flowchart LR
-    U[Compradores y operadores] --> FE[Frontend web]
+    U[CUSTOMERs y staff] --> FE[Frontend web]
 
     subgraph APP[Render]
         BE[Backend Java Spring Boot]

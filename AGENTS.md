@@ -4,8 +4,9 @@
 
 - Backend: Spring Boot 4.1.2 + Java 17 en `backend/` (`com.tienda.plataforma`, deps web/security/jpa/validation/flyway/postgres/googleauth). No scaffoldear Express por los PDFs de `Clases/`.
 - BD dev (ahora, todo local): PostgreSQL local + pgAdmin. Fuente de verdad del esquema: `shopify_db/database/01_esquema_shopify.sql` + `shopify_db/database/migrations/V2–V19.sql` (59 tablas, 86 FKs, 71 índices explícitos). Prod (al final): BD en Supabase, despliegue en Render; se apunta vía `DATABASE_URL` / connection string del proyecto.
-- Frontend: un solo SPA (React + Vite propuesto) con 3 route trees: `/`+`/admin` (propietario), `/tienda` (cliente), `/checkout` (aislado). Ver `diagramas/01-arquitectura-frontend.md`. No partir en 2 apps sin pedirlo.
-- 2FA TOTP obligatorio para todos, sin guest checkout (decisión A). Login password → challenge TOTP → JWT corto + refresh rotado.
+- Frontend: un solo SPA (React + Vite propuesto) con 3 route trees: `/`+`/admin` (staff), `/tienda` (CUSTOMER), `/checkout` (aislado). Ver `diagramas/01-arquitectura-frontend.md`. No partir en 2 apps sin pedirlo.
+- Terminología canónica (ADR-016, plan v5 aprobado 2026-11-10): STORE_OWNER (1 por tienda) / ADMIN / OPERATOR / SUPER_ADMIN (solo Ops) / CUSTOMER (passwordless por código, `aud=tienda-storefront`). 2FA TOTP solo para staff; decisión A derogada para CUSTOMER. Tiendas nuevas: el creador nace STORE_OWNER (actual: `admin`).
+- 2FA TOTP obligatorio para staff, sin guest checkout (decisión A, vigente para staff). Login staff: password → challenge TOTP → JWT corto + refresh rotado.
 - Pagos: mock con interfaz adaptador primero, Stripe test después. No construir 4 adaptadores simétricos (Yape/Culqi no son Stripe).
 
 ## Qué leer antes de tocar código
@@ -18,10 +19,10 @@
 
 ## API por superficie (no mezclar)
 
-- `/api/storefront` — catálogo, carrito, cuenta cliente (rol `cliente`).
-- `/api/checkout` — orden, cotizar envío, pagos, confirmar (rol `cliente`, `no-store`, `noindex`).
-- `/api/admin` — CRUD catálogo, inventario, pedidos, cupones, envíos (roles `admin`/`operador`, auditoría).
-- JWT `cliente` nunca abre `/admin`; JWT `admin` no compra en `/checkout`. El guard de frontend no es seguridad: revalidar rol + titularidad en backend.
+- `/api/storefront` — catálogo, carrito, cuenta CUSTOMER (objetivo B: JWT `aud=tienda-storefront`, sin rol global).
+- `/api/checkout` — orden, cotizar envío, pagos, confirmar (CUSTOMER verificado por código, `no-store`, `noindex`).
+- `/api/admin` — CRUD catálogo, inventario, pedidos, cupones, envíos (STORE_OWNER/ADMIN/OPERATOR por `tienda_usuarios`, auditoría).
+- JWT CUSTOMER nunca abre `/admin`; JWT staff no compra en `/checkout`. El guard de frontend no es seguridad: revalidar rol + titularidad en backend.
 
 ## Duda de negocio Shopify: investigar, no adivinar
 
@@ -32,7 +33,7 @@
 
 - `actualizado_en` lo refrescan triggers V7; `registros_auditoria` la escribe el backend en la misma transacción (`06`, `08-observaciones.md:160-166`).
 - `CASCADE` destruye historia: borrar `pedidos` borra pagos/eventos/reembolsos/envíos. Desde V4: reseñas `SET NULL` y ubicaciones `RESTRICT`. Prohibir DELETE de pedidos/productos/ubicaciones con historial; cancelar/archivar/desactivar en su lugar.
-- Desde V5 `clientes.usuario_id` y `pedidos.cliente_id` son NOT NULL + `RESTRICT`: la BD bloquea borrar usuarios/clientes con historial. La baja es desactivar o anonimizar (GDPR), nunca DELETE.
+- Desde V5 `clientes.usuario_id` y `pedidos.cliente_id` son NOT NULL + `RESTRICT` (actual pre-B; objetivo B: `email` por tienda, `usuario_id` nullable en V20 y eliminado en V23 con respaldo blindado): la BD bloquea borrar usuarios/clientes con historial. La baja es desactivar o anonimizar (GDPR), nunca DELETE.
 - Referencias sin FK: `metacampos(entidad,entidad_id)`, `registros_auditoria(entidad,entidad_id)`, `tasas_impuesto` huérfana (no enlaza a checkout/pedidos). Validar existencia y tipo en aplicación.
 - Faltaban UNIQUEs que las migraciones V3/V6 ya imponen en BD (dirección por tipo, descuento por pedido, reseña por cliente-producto, línea por envío, refs externas por pasarela/pago). El backend conserva: validar pertenencia cruzada, sumas contra totales, transiciones y concurrencia con bloqueo.
 - `sesiones.token_legacy` en claro solo durante la transición V8 → cutover a `token_hash` + `familia_id`/`revocado_en`. Nunca loguear tokens, secretos ni `pago_eventos.payload` completo.
@@ -60,7 +61,7 @@
 - Responder en español. Citar código como `ruta:línea`.
 - Backend con Maven wrapper: `./mvnw test` desde `backend/`. Surefire fija el perfil `test` y la BD local aislada `shopify_db_test`; nunca ejecutar la suite contra `shopify_db_demo`, que queda para Postman. Si falta, crear `shopify_db_test` una sola vez. Fixtures persistentes de tests pueden quedarse en esa BD. `frontend/` sigue vacío: no inventar comandos allí.
 - Boot 4.1 divide starters: MockMvc está en `spring-boot-starter-webmvc-test` (`org.springframework.boot.webmvc.test.autoconfigure`), Flyway auto-config en `spring-boot-starter-flyway` + `flyway-database-postgresql` explícito (sin él, PG 18 dice "Unsupported Database"). Lombok con `annotationProcessorPaths` explícito.
-- Demo/exposición: `postman/coleccion.json` + `postman/entorno-local.json`; Swagger UI en `/swagger-ui.html` (springdoc). WS solo campana admin (`/ws`, salas `/topic/tienda/:id`): ver `diagramas/09-websocket.md`.
+- Demo/exposición: `postman/coleccion.json` + `postman/entorno-local.json`; Swagger UI en `/swagger-ui.html` (springdoc). WS solo campana staff (`/ws`, salas `/topic/tienda/:id`): ver `diagramas/09-websocket.md`.
 - Webhooks Stripe en local (dev): `stripe listen --events payment_intent.succeeded --events payment_intent.payment_failed --events charge.refunded --events refund.created --events refund.updated --events refund.failed --forward-to localhost:8080/api/webhooks/pagos/stripe` y otro igual a `/api/webhooks/facturacion/stripe`. Cada `listen` imprime un `whsec_...` nuevo: va a la credencial de la tienda (`sk;whsec`) o a `STRIPE_PLATFORM_WHSEC`. En prod no hay CLI: endpoint público registrado en Dashboard → Developers → Webhooks.
 
 ## Billing Shopify verificado (subagente, doc oficial 2026-11-08)

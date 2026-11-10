@@ -1,7 +1,8 @@
-# 12 — Autorización por superficie y tenant
+# 12 — Autorización por superficie y tenant (actual pre-B; objetivo B en ADR-016)
 
 - **Alcance:** autorización backend de roles para `/api/admin`, `/api/checkout`, Storefront y Ops.
-- **Fuente de roles:** `usuario_roles` contiene roles globales de plataforma; `tienda_usuarios` contiene `admin`/`operador` por tienda; `clientes` identifica al cliente de su tienda (V12).
+- **Fuente de roles (actual):** `usuario_roles` contiene roles globales de plataforma; `tienda_usuarios` contiene `admin`/`operador` por tienda; `clientes` identifica al CUSTOMER de su tienda (V12).
+- **Objetivo B:** `usuario_roles` solo SUPER_ADMIN; `tienda_usuarios` con STORE_OWNER/ADMIN/OPERATOR; CUSTOMER fuera de `usuario_roles`, con JWT propio (`aud=tienda-storefront`) que nunca se intercambia con el staff.
 - **Catálogo/carrito:** la lectura del catálogo y las operaciones del carrito con token son públicas; eso no habilita checkout invitado. Las comprobaciones de tenant para requests con header y tienda congelada se endurecen en la tarea siguiente.
 
 ```mermaid
@@ -11,16 +12,16 @@ flowchart LR
     TEN --> AUTHZ[AuthorizationManager: ruta + principal + TenantContext]
 
     AUTHZ -->|GET productos / carrito con token| PUBLIC[Storefront público]
-    AUTHZ -->|/api/admin/**| STAFF{tienda_usuarios<br/>rol admin u operador<br/>en la tienda activa?}
-    STAFF -->|sí, no super_admin| ADMIN[Admin de esa tienda]
-    STAFF -->|no / super_admin| DENY[403]
+    AUTHZ -->|/api/admin/**| STAFF{tienda_usuarios<br/>STORE_OWNER/ADMIN/OPERATOR<br/>en la tienda activa?}
+    STAFF -->|sí, no SUPER_ADMIN| ADMIN[Staff de esa tienda]
+    STAFF -->|no / SUPER_ADMIN| DENY[403]
 
-    AUTHZ -->|/api/checkout/**| CUSTOMER{clientes.tienda_id<br/>coincide con tienda activa<br/>y no es staff de ella?}
-    CUSTOMER -->|sí| CHECKOUT[Checkout como cliente]
-    CUSTOMER -->|no / super_admin| DENY
+    AUTHZ -->|/api/checkout/**| CUSTOMER{JWT CUSTOMER<br/>tienda_id == tienda activa?}
+    CUSTOMER -->|sí| CHECKOUT[Checkout como CUSTOMER]
+    CUSTOMER -->|no / SUPER_ADMIN| DENY
 
     AUTHZ -->|/api/storefront/{slug}/cuenta/**| CUSTOMER
-    AUTHZ -->|/api/ops/**| GLOBAL{usuario_roles incluye<br/>super_admin?}
+    AUTHZ -->|/api/ops/**| GLOBAL{usuario_roles incluye<br/>SUPER_ADMIN?}
     GLOBAL -->|sí| OPS[Ops global]
     GLOBAL -->|no| DENY
 ```
@@ -29,12 +30,12 @@ flowchart LR
 
 | Superficie | Autorización requerida | Rechazo explícito |
 |---|---|---|
-| `/api/admin/**` | `tienda_usuarios` del tenant activo con rol `admin` u `operador` | Cliente sin rol de staff; `super_admin`; tenant ausente |
-| `/api/admin/usuarios/**`, `/api/admin/pasarelas/**`, `/api/admin/facturacion/**` | Admin de la tienda activa | Operador; cliente; `super_admin`; tenant ausente |
-| `/api/checkout/**` | `ROLE_cliente` y fila `clientes` del principal en el tenant activo | Cualquier autoridad admin/operador/super_admin; tenant ausente |
-| `/api/storefront/{slug}/cuenta/**` | `ROLE_cliente` y cliente perteneciente al tenant activo | Cualquier autoridad admin/operador/super_admin; tenant ausente |
+| `/api/admin/**` | `tienda_usuarios` del tenant activo con STORE_OWNER/ADMIN/OPERATOR | CUSTOMER sin vínculo staff; SUPER_ADMIN; tenant ausente |
+| `/api/admin/usuarios/**`, `/api/admin/pasarelas/**`, `/api/admin/facturacion/**` | STORE_OWNER/ADMIN de la tienda activa (actual: `admin`; objetivo B: transferencia y resguardo del OWNER) | OPERATOR; CUSTOMER; SUPER_ADMIN; tenant ausente |
+| `/api/checkout/**` | (actual) `ROLE_cliente` y fila `clientes` del principal en el tenant activo. Objetivo B: JWT CUSTOMER con `tienda_id` del tenant | Cualquier JWT staff/SUPER_ADMIN; tenant ausente |
+| `/api/storefront/{slug}/cuenta/**` | (actual) `ROLE_cliente` y CUSTOMER perteneciente al tenant activo. Objetivo B: JWT CUSTOMER | Cualquier JWT staff/SUPER_ADMIN; tenant ausente |
 | `GET /api/storefront/{slug}/productos/**`, `/api/storefront/{slug}/carrito/**` | Público; el carrito exige token opaco para mutaciones | La autorización pública no permite comprar ni confirmar checkout |
-| `/api/ops/**` | Rol global `super_admin` | Cliente, admin u operador de tienda |
+| `/api/ops/**` | Rol global SUPER_ADMIN | CUSTOMER, staff de tienda |
 
 La autorización de ruta corre después de autenticar y resolver el tenant. La pertenencia a una tienda por sí sola no concede permiso para usar cualquier superficie; se consulta el tipo de rol adecuado para esa superficie.
 
@@ -43,5 +44,5 @@ La autorización de ruta corre después de autenticar y resolver el tenant. La p
 - Storefront resuelve la tienda desde `/api/storefront/{slug}/...`; si se envía `X-Tienda-Slug`, debe ser exactamente el mismo slug.
 - Admin y checkout exigen `X-Tienda-Slug`; la tienda congelada bloquea ambos y Storefront salvo `/api/admin/facturacion`.
 - Storefront solo expone las rutas públicas de catálogo/carrito y las privadas de cuenta autorizadas explícitamente; las demás se deniegan.
-- Crear y confirmar checkout validan que checkout, cliente, carrito y variantes pertenezcan a la tienda activa; el carrito asociado debe pertenecer al cliente autenticado.
-- Las rutas públicas de carrito aceptan el token opaco, pero nunca permiten usarlo para recuperar o modificar un carrito de otra tienda ni el carrito de otro cliente autenticado.
+- Crear y confirmar checkout validan que checkout, CUSTOMER, carrito y variantes pertenezcan a la tienda activa; el carrito asociado debe pertenecer al CUSTOMER autenticado.
+- Las rutas públicas de carrito aceptan el token opaco, pero nunca permiten usarlo para recuperar o modificar un carrito de otra tienda ni el carrito de otro CUSTOMER autenticado.

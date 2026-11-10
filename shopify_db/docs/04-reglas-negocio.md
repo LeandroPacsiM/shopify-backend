@@ -36,13 +36,13 @@ Estas reglas se derivan de `database/01_esquema_shopify.sql`. Las restricciones 
 
 **Ejemplo**: Al reservar dos unidades, el backend bloquea el nivel del artículo en Lima, verifica la disponibilidad, actualiza los contadores según su política y agrega un movimiento `reserva` con cantidad 2. Si cualquier paso falla, revierte ambos cambios.
 
-### Regla: Un carrito pertenece a un cliente o a un visitante identificado por token
+### Regla: Un carrito pertenece a un CUSTOMER o a un visitante identificado por token
 
-**Descripción**: `carritos.cliente_id` admite nulo para visitantes. Todo carrito, autenticado o anónimo, posee un `token` obligatorio y único. Al eliminar el cliente, su `cliente_id` pasa a nulo y el carrito no se borra.
+**Descripción**: `carritos.cliente_id` admite nulo para visitantes. Todo carrito, autenticado o anónimo, posee un `token` obligatorio y único. Al eliminar el CUSTOMER, su `cliente_id` pasa a nulo y el carrito no se borra.
 
 **Implementación**: La unicidad de `token` y el comportamiento `ON DELETE SET NULL` son reales. El backend debe emitir tokens opacos, comprobar que el token presentado corresponde al carrito y, cuando exista `cliente_id`, verificar también su titularidad. Los estados permitidos son `activo`, `convertido`, `abandonado` y `expirado`; la validez temporal respecto de `expira_en` y la decisión de tener un único carrito activo por actor se controlan en aplicación.
 
-**Ejemplo**: Un visitante recibe un carrito con `cliente_id = NULL` y un token aleatorio. Tras autenticarse, el backend puede asociar ese mismo carrito a su cliente, conservando el token y las líneas.
+**Ejemplo**: Un visitante recibe un carrito con `cliente_id = NULL` y un token aleatorio. Tras autenticarse, el backend puede asociar ese mismo carrito a su perfil CUSTOMER, conservando el token y las líneas.
 
 ### Regla: Cada variante aparece una sola vez por carrito
 
@@ -54,9 +54,9 @@ Estas reglas se derivan de `database/01_esquema_shopify.sql`. Las restricciones 
 
 ### Regla: El checkout congela una propuesta de totales, no una verdad calculada por la base
 
-**Descripción**: `checkout_sesiones` vincula un carrito con cliente, direcciones y método de envío, y registra subtotal, impuestos, envío, descuentos y total. Sirve como contexto de confirmación y expiración de la compra.
+**Descripción**: `checkout_sesiones` vincula un carrito con CUSTOMER, direcciones y método de envío, y registra subtotal, impuestos, envío, descuentos y total. Sirve como contexto de confirmación y expiración de la compra.
 
-**Implementación**: Los cinco importes tienen `CHECK` de no negatividad y el estado solo puede ser `pendiente`, `completado`, `expirado` o `cancelado`. Las claves foráneas no demuestran que las direcciones pertenezcan al cliente ni que los totales sean aritméticamente correctos. El backend debe comprobar titularidad, carrito activo, vigencia, método y tasa aplicables, precios, descuentos y stock, y calcular los importes con redondeo monetario uniforme. Puede haber varias sesiones para un carrito porque no hay unicidad sobre `carrito_id`; la aplicación decide cuál está vigente.
+**Implementación**: Los cinco importes tienen `CHECK` de no negatividad y el estado solo puede ser `pendiente`, `completado`, `expirado` o `cancelado`. Las claves foráneas no demuestran que las direcciones pertenezcan al CUSTOMER ni que los totales sean aritméticamente correctos. El backend debe comprobar titularidad, carrito activo, vigencia, método y tasa aplicables, precios, descuentos y stock, y calcular los importes con redondeo monetario uniforme. Puede haber varias sesiones para un carrito porque no hay unicidad sobre `carrito_id`; la aplicación decide cuál está vigente.
 
 **Ejemplo**: Para un subtotal de 200, envío de 15 y descuento de 20, el backend calcula el impuesto según la tasa seleccionada y persiste todos los importes. La base acepta que sean no negativos, pero no recalcula `total` ni verifica la fórmula.
 
@@ -158,9 +158,9 @@ Estas reglas se derivan de `database/01_esquema_shopify.sql`. Las restricciones 
 
 ### Regla: Las reseñas tienen una calificación cerrada y publicación moderada
 
-**Descripción**: `resenas` vincula una opinión con un producto y opcionalmente con un cliente. La calificación es un entero de 1 a 5 y `aprobada` controla su publicación.
+**Descripción**: `resenas` vincula una opinión con un producto y opcionalmente con un CUSTOMER. La calificación es un entero de 1 a 5 y `aprobada` controla su publicación.
 
-**Implementación**: El `CHECK calificacion BETWEEN 1 AND 5` es real. Si se elimina el cliente, `cliente_id` queda nulo; si se elimina el producto, la reseña se conserva con `producto_id` nulo (V4, como Shopify). El `UNIQUE (producto_id, cliente_id)` de V6 impide reseñas repetidas del mismo cliente al mismo producto. El backend debe validar la autoría, aplicar la política de compra verificada si se adopta y mostrar públicamente solo reseñas aprobadas.
+**Implementación**: El `CHECK calificacion BETWEEN 1 AND 5` es real. Si se elimina el CUSTOMER, `cliente_id` queda nulo; si se elimina el producto, la reseña se conserva con `producto_id` nulo (V4, como Shopify). El `UNIQUE (producto_id, cliente_id)` de V6 impide reseñas repetidas del mismo CUSTOMER al mismo producto. El backend debe validar la autoría, aplicar la política de compra verificada si se adopta y mostrar públicamente solo reseñas aprobadas.
 
 **Ejemplo**: Una calificación de 5 puede quedar inicialmente no aprobada hasta la moderación. Una calificación de 0 o 6 es rechazada por PostgreSQL.
 

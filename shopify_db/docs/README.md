@@ -31,7 +31,7 @@ Los diez documentos numerados componen la línea base funcional y técnica:
 
 ## Decisiones de arquitectura
 
-Los ADR registran decisiones y sus consecuencias; no sustituyen al esquema SQL. La migración repetible `R__roles_base.sql` inserta los roles del RBAC (`super_admin`, `admin`, `operador`, `cliente`); es dato de referencia aplicado por Flyway, no seed de demostración.
+Los ADR registran decisiones y sus consecuencias; no sustituyen al esquema SQL. La migración repetible `R__roles_base.sql` inserta los roles del RBAC (`super_admin`, `admin`, `operador`, `cliente`) — estado actual pre-B; objetivo B (ADR-016): solo `super_admin` global. Es dato de referencia aplicado por Flyway, no seed de demostración.
 
 1. [ADR-001: Uso de PostgreSQL](decisiones/ADR-001-uso-postgresql.md).
 2. [ADR-002: Una única base relacional sin Redis](decisiones/ADR-002-base-unica.md).

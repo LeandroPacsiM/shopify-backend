@@ -12,11 +12,11 @@ Este documento distingue los mecanismos que ya declara `database/01_esquema_shop
 - `usuarios.email` es obligatorio y único; puede servir como identificador de login. `usuarios.activo` permite impedir nuevos accesos de cuentas deshabilitadas, comprobación que debe hacer la aplicación.
 - No hay columnas para contraseña en texto plano, preguntas de seguridad ni tokens de recuperación. Tampoco existe una tabla de refresh tokens; no debe suponerse su presencia.
 
-### Sesiones persistidas
+### Sesiones staff persistidas (objetivo B: CUSTOMER usa `cliente_sesiones`, V21)
 
 La tabla `sesiones` contiene `usuario_id`, `token_hash`, `familia_id`, `revocado_en` y `expira_en` (V8; `token_legacy` en transición hasta el cutover). Sus controles reales son:
 
-- El refresh opaco solo existe como `token_hash` (SHA-256); el valor original únicamente lo tiene el cliente. La rotación usa `familia_id` y `reemplazado_por_id`; reutilizar un refresh rotado obliga a revocar la familia entera.
+- El refresh opaco solo existe como `token_hash` (SHA-256); el valor original únicamente lo tiene el titular. La rotación usa `familia_id` y `reemplazado_por_id`; reutilizar un refresh rotado obliga a revocar la familia entera.
 - La expiración es obligatoria, pero PostgreSQL no invalida ni elimina la sesión al llegar a `expira_en`; cada autenticación debe comparar esa fecha con el instante actual.
 - La relación con `usuarios` es obligatoria y tiene `ON DELETE CASCADE`: eliminar el usuario elimina sus sesiones.
 - `ip` admite hasta 45 caracteres, suficiente para representar IPv4 o IPv6, y `user_agent` hasta 255. Ambos son datos de contexto, no factores de autenticación suficientes por sí mismos.
@@ -128,7 +128,7 @@ Todas las claves foráneas del esquema se enumeran a continuación. `CASCADE` pr
 - `SET NULL` conserva el registro, pero rompe el enlace con el actor o catálogo original. En pedidos, los datos copiados en `pedido_items` y `pedido_direcciones` son los que preservan el detalle histórico.
 - `RESTRICT` aparece en las referencias de pagos a pasarelas y de descuentos aplicados a descuentos. No debe generalizarse a otras relaciones.
 - `metacampos.entidad_id` no es clave foránea. La pareja `entidad`/`entidad_id` es polimórfica y necesita validación de existencia, tipo y autorización en el backend.
-- Las claves foráneas independientes no verifican pertenencia cruzada: no garantizan que una opción sea del producto de la variante, que un pago y un pedido de un reembolso coincidan, que un envío y su línea sean del mismo pedido, ni que una dirección de checkout pertenezca al cliente.
+- Las claves foráneas independientes no verifican pertenencia cruzada: no garantizan que una opción sea del producto de la variante, que un pago y un pedido de un reembolso coincidan, que un envío y su línea sean del mismo pedido, ni que una dirección de checkout pertenezca al CUSTOMER.
 
 ## Constraints de unicidad
 
@@ -141,7 +141,7 @@ Todas las tablas tienen `id BIGSERIAL PRIMARY KEY`. Además de las claves primar
 | `permisos` | `nombre` | Evita nombres de permiso duplicados. |
 | `rol_permisos` | `uq_rol_permiso (rol_id, permiso_id)` | Evita asignaciones repetidas. |
 | `usuario_roles` | `uq_usuario_rol (usuario_id, rol_id)` | Evita roles repetidos para un usuario. |
-| `clientes` | `usuario_id` | Un cliente por usuario; obligatorio desde V5. |
+| `clientes` | `usuario_id` | Un CUSTOMER por usuario; obligatorio desde V5 (actual pre-B; objetivo B: email por tienda, V20–V23). |
 | `sesiones` | `token_hash` | Solo se guarda el hash; el original solo lo tiene el cliente (V8). |
 | `usuario_codigos_recuperacion` | `uq_usuario_codigo (usuario_id, codigo_hash)` | Evita códigos duplicados por usuario (V2). |
 | `proveedores` | `slug` | Mantiene única la ruta del proveedor. |
@@ -164,7 +164,7 @@ Todas las tablas tienen `id BIGSERIAL PRIMARY KEY`. Además de las claves primar
 | `pago_eventos` | `uq_pago_evento_referencia (pago_id, referencia_externa)` | Deduplica webhooks por event-id (V3). |
 | `reembolsos` | `uq_reembolso_pago_transaccion (pago_id, transaccion_externa_id)` | Una devolución externa, una vez por pago (V3). |
 | `envio_items` | `uq_envio_pedido_item (envio_id, pedido_item_id)` | Una línea, una vez por envío (V6). |
-| `resenas` | `uq_resena_producto_cliente (producto_id, cliente_id)` | Una reseña por cliente y producto (V6). |
+| `resenas` | `uq_resena_producto_cliente (producto_id, cliente_id)` | Una reseña por CUSTOMER y producto (V6). |
 | `pedidos` | `numero_pedido` | Mantiene único el número comercial. |
 | `pasarelas_pago` | `codigo` | Evita códigos de pasarela duplicados. |
 | `transportistas` | `nombre` y `codigo` | Evita transportistas con identificadores duplicados. |
@@ -176,7 +176,7 @@ Todas las tablas tienen `id BIGSERIAL PRIMARY KEY`. Además de las claves primar
 | `descuento_colecciones` | `uq_descuento_coleccion (descuento_id, coleccion_id)` | Evita repetir alcance de colección. |
 | `lista_deseo_items` | `uq_lista_deseo_producto (lista_deseo_id, producto_id)` | Evita productos repetidos dentro de una lista. |
 
-La unicidad de combinaciones completas de opciones, una ficha de inventario por variante o números de tracking **no** está declarada. Las unicidades de envío-línea, pedido-descuento, referencias externas de pago y reseña por cliente-producto sí se declararon en V3/V6. Si el negocio requiere las restantes, debe controlarlas la aplicación o incorporarse mediante una migración futura; no se presenta como existente.
+La unicidad de combinaciones completas de opciones, una ficha de inventario por variante o números de tracking **no** está declarada. Las unicidades de envío-línea, pedido-descuento, referencias externas de pago y reseña por CUSTOMER-producto sí se declararon en V3/V6. Si el negocio requiere las restantes, debe controlarlas la aplicación o incorporarse mediante una migración futura; no se presenta como existente.
 
 ## Constraints CHECK y validaciones pendientes
 
@@ -184,7 +184,7 @@ La unicidad de combinaciones completas de opciones, una ficha de inventario por 
 |---|---|
 | `usuarios` | `chk_totp_coherente` (V2): si `totp_habilitado = TRUE`, exige secreto y confirmación; `intentos_fallidos >= 0`. |
 | `tienda_pasarelas` | `modo` solo admite `test` o `vivo` (V10). |
-| `tienda_usuarios` | `rol_tienda` solo admite `admin` u `operador` (V12). |
+| `tienda_usuarios` | `rol_tienda` solo admite `admin` u `operador` (V12, actual pre-B; objetivo B: + `store_owner`, V21–V22). |
 | `productos` | `estado` solo admite `borrador`, `activo` o `archivado`. |
 | `producto_variantes` | `precio >= 0`; `precio_comparativo >= 0` y `peso_gramos >= 0` cuando se informan. |
 | `niveles_inventario` | `disponible >= 0` y `reservado >= 0`. |
@@ -211,7 +211,7 @@ No existen `CHECK` para los estados de `historial_estados_pedido`, `pago_eventos
 
 Los índices siguientes son los 52 `CREATE INDEX` del script V1 más `idx_codigos_recuperacion_usuario` (V2), `idx_sesiones_familia` (V8), `idx_pedido_impuestos_pedido` (V9), `idx_tienda_pasarelas_tienda` (V10), los 9 `idx_*_tienda` (V11), `idx_tienda_usuarios_usuario` (V12), `idx_tokens_cuenta_usuario` (V15), `idx_notificaciones_tienda` (V16), `idx_suscripcion_eventos_suscripcion` (V18) e `idx_checkout_descuentos_checkout` + `idx_checkout_descuentos_descuento` (V19), sin contar los índices que PostgreSQL crea implícitamente para claves primarias y constraints `UNIQUE`. Son índices de búsqueda; por sí solos no añaden unicidad ni autorización.
 
-### Usuarios, clientes y auditoría: 7
+### Usuarios, CUSTOMERs y auditoría: 7
 
 | Índice | Columnas | Propósito |
 |---|---|---|
@@ -359,12 +359,12 @@ El esquema tampoco impide actualizar o borrar auditoría. Si se requiere un regi
 
 Las siguientes medidas son recomendaciones pendientes de implementación, no características que el SQL ya active:
 
-1. **Contraseñas y autenticación**: usar Argon2id o BCrypt con parámetros adecuados, comparación segura, respuestas de login genéricas, límites de intentos y validación de sesión en un filtro de Spring Security. Rotar el token tras autenticar y revocar sesiones al cerrar o deshabilitar la cuenta. Desde V8 solo se guarda `sesiones.token_hash` (SHA-256 del refresh); el valor original únicamente lo tiene el cliente.
-2. **Autorización**: aplicar RBAC en el servidor con denegación por defecto y comprobaciones de titularidad por recurso. No confiar en roles, precios, totales, estados o identificadores de cliente enviados por el navegador.
+1. **Contraseñas y autenticación**: usar Argon2id o BCrypt con parámetros adecuados, comparación segura, respuestas de login genéricas, límites de intentos y validación de sesión en un filtro de Spring Security. Rotar el token tras autenticar y revocar sesiones al cerrar o deshabilitar la cuenta. Desde V8 solo se guarda `sesiones.token_hash` (SHA-256 del refresh); el valor original únicamente lo tiene el titular. Objetivo B: CUSTOMER con HMAC y sesiones propias (V21).
+2. **Autorización**: aplicar RBAC canónico (ADR-016) en el servidor con denegación por defecto y comprobaciones de titularidad por recurso. No confiar en roles, precios, totales, estados o identificadores de CUSTOMER enviados por el navegador.
 3. **Transacciones y concurrencia**: agrupar cambios dependientes y usar bloqueos de fila o actualizaciones condicionales para checkout, stock, conversión del pedido, pagos, reembolsos y consumo de descuentos. Las APIs externas quedan fuera de la transacción PostgreSQL y necesitan reconciliación.
 4. **Acceso a datos**: usar consultas parametrizadas mediante JPA/JDBC, validar entradas y devolver solo los campos necesarios. Las validaciones de Bean Validation complementan, pero no sustituyen, los constraints de PostgreSQL.
 5. **Credenciales de infraestructura**: mantener contraseñas de base, claves de Supabase y secretos de pago o tracking en variables o un gestor de secretos. Una clave de servicio de Supabase debe permanecer exclusivamente en el backend; no se afirma que RLS esté configurada por este script.
-6. **Exposición de Supabase**: si algún cliente accede directamente a PostgREST o Storage, definir y probar RLS y políticas específicas antes de exponerlo. Si todo acceso pasa por Spring Boot, usar igualmente una cuenta de base con privilegios mínimos y no otorgar a la aplicación permisos innecesarios de administración.
+6. **Exposición de Supabase**: si algún consumidor accede directamente a PostgREST o Storage, definir y probar RLS y políticas específicas antes de exponerlo. Si todo acceso pasa por Spring Boot, usar igualmente una cuenta de base con privilegios mínimos y no otorgar a la aplicación permisos innecesarios de administración.
 7. **Integraciones externas**: exigir TLS, verificar firmas o autenticación de webhooks, validar que la referencia corresponda a la pasarela y operación esperadas, aplicar tiempos de espera y hacer reintentos idempotentes. No registrar secretos completos en `pago_eventos.payload` ni en logs.
 8. **Protección de datos**: cifrar el transporte, restringir CORS y orígenes confiables, limitar tamaño de payloads, anonimizar logs y definir retención para sesiones, carritos, eventos y auditoría conforme a la necesidad del negocio.
 9. **Verificación**: añadir pruebas de constraints y de autorización, además de casos concurrentes para doble checkout, stock insuficiente, eventos repetidos, envíos que exceden cantidades y descuentos con último uso disponible.

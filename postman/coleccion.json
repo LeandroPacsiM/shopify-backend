@@ -772,6 +772,23 @@
 					}
 				},
 				{
+					"name": "publicar producto (borrador a activo)",
+					"request": {
+						"method": "PATCH",
+						"url": "{{baseUrl}}/api/admin/productos/:id/publicar",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
+						]
+					}
+				},
+				{
 					"name": "crear colección",
 					"request": {
 						"method": "POST",

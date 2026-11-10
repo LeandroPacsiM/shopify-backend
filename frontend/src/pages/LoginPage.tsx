@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { loginPaso1, loginPaso2 } from '../api/auth';
+import { loginPaso1, loginPaso2, loginPaso2Trial } from '../api/auth';
 import { useAuth } from '../auth/AuthContext';
 
 export default function LoginPage() {
@@ -42,6 +42,24 @@ export default function LoginPage() {
       nav('/admin', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Código inválido');
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function onTrial() {
+    setError(null);
+    setCargando(true);
+    try {
+      const tokens = await loginPaso2Trial(email, password);
+      guardarSesion(tokens.accessToken, tokens.roles, email.trim().toLowerCase());
+      nav('/tiendas/nueva', { replace: true });
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? `${err.message} (si ya tienes 2FA, mete tu código arriba)`
+          : 'No se pudo entrar en modo trial',
+      );
     } finally {
       setCargando(false);
     }
@@ -135,13 +153,17 @@ export default function LoginPage() {
                   {cargando ? 'Entrando…' : 'Entrar'}
                 </button>
               </div>
+              <button type="button" disabled={cargando} onClick={onTrial}>
+                Entrar en modo trial (activo mi 2FA después)
+              </button>
             </form>
           )}
 
           {error && <p className="error">{error}</p>}
           <p className="muted small">
-            Flujo sin Postman: <Link to="/registro">registro</Link> → <Link to="/email">email</Link>{' '}
-            → <Link to="/totp">TOTP</Link> → login → <Link to="/tiendas/nueva">crear tienda</Link>.{' '}
+            Flujo trial sin Postman: <Link to="/registro">registro</Link> → <Link to="/email">email</Link>{' '}
+            → login → modo trial → <Link to="/tiendas/nueva">crear tienda</Link> →{' '}
+            <Link to="/totp">TOTP</Link> (obligatorio antes de cobrar).{' '}
             <Link to="/password">Olvidé mi password</Link>.
           </p>
         </section>

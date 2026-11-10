@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { logout as apiLogout, refreshSesion } from '../api/auth';
+import { leerMfa, logout as apiLogout, refreshSesion } from '../api/auth';
 
 interface Sesion {
   accessToken: string | null;
   roles: string[];
   email: string | null;
+  mfa: 'pendiente' | 'completa' | null;
 }
 
 interface AuthCtx extends Sesion {
@@ -18,20 +19,20 @@ interface AuthCtx extends Sesion {
 const Ctx = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [sesion, setSesion] = useState<Sesion>({ accessToken: null, roles: [], email: null });
+  const [sesion, setSesion] = useState<Sesion>({ accessToken: null, roles: [], email: null, mfa: null });
 
   const guardarSesion = useCallback((accessToken: string, roles: string[], email: string) => {
-    setSesion({ accessToken, roles, email });
+    setSesion({ accessToken, roles, email, mfa: leerMfa(accessToken) });
   }, []);
 
   const limpiar = useCallback(() => {
-    setSesion({ accessToken: null, roles: [], email: null });
+    setSesion({ accessToken: null, roles: [], email: null, mfa: null });
   }, []);
 
   const refrescar = useCallback(async () => {
     try {
       const r = await refreshSesion();
-      setSesion((s) => ({ ...s, accessToken: r.accessToken, roles: r.roles }));
+      setSesion((s) => ({ ...s, accessToken: r.accessToken, roles: r.roles, mfa: leerMfa(r.accessToken) }));
       return true;
     } catch {
       return false;
@@ -42,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await apiLogout();
     } finally {
-      setSesion({ accessToken: null, roles: [], email: null });
+      setSesion({ accessToken: null, roles: [], email: null, mfa: null });
     }
   }, []);
 

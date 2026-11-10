@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
 export default function AdminPage() {
-  const { accessToken, roles, email, salir, refrescar } = useAuth();
+  const { accessToken, roles, email, mfa, salir, refrescar } = useAuth();
   const nav = useNavigate();
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -42,9 +42,14 @@ export default function AdminPage() {
         <main className="admin-main">
           <h2>Dashboard (prueba de backend)</h2>
           <p className="muted">
-            To get orders and accept payments you need a plan — texto del Figma SaaS replicado
-            como referencia visual.
+            Sesión: {mfa === 'pendiente' ? 'Trial (mfa=pendiente: lee, no escribe)' : 'Completa (mfa=completa)'}.
           </p>
+          {mfa === 'pendiente' && (
+            <p className="warn">
+              Estás en trial: puedes crear tu tienda y mirar, pero para cobrar, equipar o
+              transferir primero activa tu 2FA en <Link to="/totp">TOTP</Link>.
+            </p>
+          )}
 
           <div className="grid">
             <div className="stat">

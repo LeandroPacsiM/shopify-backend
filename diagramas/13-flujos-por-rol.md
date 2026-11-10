@@ -1,17 +1,19 @@
-# 13 — Flujos punta a punta por rol (ADR-016 aplicado en F4)
+# 13 — Flujos punta a punta por rol (ADR-016/017 aplicados)
 
-Un diagrama por actor con endpoints reales. Guards: JWT staff (`aud=tienda-admin`)
-vs CUSTOMER (`aud=tienda-storefront`); tenant por slug/header (`12`).
+Un diagrama por actor con endpoints reales. Guards: JWT staff (`aud=tienda-admin`,
+claim `mfa` completa/pendiente) vs CUSTOMER (`aud=tienda-storefront`); tenant por slug/header (`12`).
 
-## STORE_OWNER — de crear la tienda a transferirla
+## STORE_OWNER — de crear la tienda a transferirla (trial ADR-017)
 
 ```mermaid
 flowchart TD
     R["POST /auth/registro-administrativo<br/>identidad sin permisos"]
-    R --> V["POST /auth/email/confirmar + /auth/totp/*<br/>verifica + 2FA"]
-    V --> L["POST /auth/login + /auth/login/totp<br/>JWT staff"]
+    R --> V["POST /auth/email/confirmar<br/>verifica email"]
+    V --> L["POST /auth/login + /auth/login/totp<br/>JWT limitado mfa=pendiente"]
     L --> T["POST /auth/tiendas<br/>nace STORE_OWNER + suscripción pendiente"]
-    T --> F["POST /api/admin/facturacion/suscribir<br/>activa checkout"]
+    T --> Q["trial: GETs + catálogo sí;<br/>escritura /api/admin = 403"]
+    Q --> W["POST /auth/totp/* → /auth/login/totp<br/>JWT completo mfa=completa"]
+    W --> F["POST /api/admin/facturacion/suscribir<br/>activa checkout (gate al dinero)"]
     F --> C["POST /api/admin/productos<br/>+ colecciones, etiquetas, inventario"]
     C --> E["POST /api/admin/usuarios<br/>equipo ADMIN/OPERATOR"]
     E --> O["opera: pedidos, pagos, reembolsos,<br/>envíos, reseñas, notificaciones"]
@@ -55,6 +57,8 @@ flowchart TD
 ## Reglas cruzadas
 
 - JWT CUSTOMER nunca abre `/api/admin`; JWT staff nunca compra en `/checkout`.
+- JWT staff `mfa=pendiente` solo lee bajo `/api/admin`; la escritura es 403
+  hasta enrolar + verificar (deny-list ADR-017).
 - Mismo email permitido en ambos mundos, incluso en la misma tienda, sin
   compartir credenciales, sesiones ni permisos.
 - Nada se borra con historial: cancelar/archivar/desactivar/anonimizar.

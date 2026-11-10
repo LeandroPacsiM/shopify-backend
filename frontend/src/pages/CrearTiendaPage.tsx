@@ -5,7 +5,7 @@ import { crearTienda, refreshSesion } from '../api/auth';
 import { useAuth } from '../auth/AuthContext';
 
 export default function CrearTiendaPage() {
-  const { accessToken, email, guardarSesion } = useAuth();
+  const { accessToken, email, mfa, guardarSesion } = useAuth();
   const [nombre, setNombre] = useState('Mi tienda demo');
   const [slug, setSlug] = useState('mi-tienda-demo');
   const [descripcion, setDescripcion] = useState('');
@@ -56,6 +56,9 @@ export default function CrearTiendaPage() {
       <section className="card narrow">
         <h2>POST /auth/tiendas</h2>
         <p className="muted">Requiere login. El creador queda STORE_OWNER, suscripción pendiente.</p>
+        {mfa === 'pendiente' && (
+          <p className="muted">Vas con sesión trial (mfa=pendiente): crear tienda está permitido.</p>
+        )}
         <form onSubmit={onSubmit}>
           <label>
             Nombre

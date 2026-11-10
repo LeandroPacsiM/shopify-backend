@@ -84,10 +84,10 @@
 					}
 				},
 				{
-					"name": "password solicitar (reset)",
+					"name": "login (challenge)",
 					"request": {
 						"method": "POST",
-						"url": "{{baseUrl}}/auth/password/solicitar",
+						"url": "{{baseUrl}}/auth/login",
 						"header": [
 							{
 								"key": "Content-Type",
@@ -96,15 +96,15 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\"email\":\"cliente1@example.com\"}"
+							"raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\"}"
 						}
 					}
 				},
 				{
-					"name": "password confirmar (código + nueva)",
+					"name": "login totp pre-2FA (JWT limitado mfa=pendiente)",
 					"request": {
 						"method": "POST",
-						"url": "{{baseUrl}}/auth/password/confirmar",
+						"url": "{{baseUrl}}/auth/login/totp",
 						"header": [
 							{
 								"key": "Content-Type",
@@ -113,7 +113,53 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\"token\":\"PEGAR-CODIGO\",\"password\":\"NuevaClave123\"}"
+							"raw": "{\"email\":\"staff1@example.com\",\"password\":\"Secreta123\"}"
+						}
+					}
+				},
+				{
+					"name": "crear tienda trial (JWT limitado, queda STORE_OWNER)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/tiendas",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"nombre\":\"Mi Tienda\",\"slug\":\"mi-tienda\"}"
+						}
+					}
+				},
+				{
+					"name": "escribir con limitada = 403 (deny-list ADR-017)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/api/admin/productos",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"titulo\":\"Trial\",\"slug\":\"trial\"}"
 						}
 					}
 				},
@@ -148,23 +194,6 @@
 						"body": {
 							"mode": "raw",
 							"raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\",\"codigo\":\"123456\"}"
-						}
-					}
-				},
-				{
-					"name": "login (challenge)",
-					"request": {
-						"method": "POST",
-						"url": "{{baseUrl}}/auth/login",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\"email\":\"cliente1@example.com\",\"password\":\"Secreta123\"}"
 						}
 					}
 				},
@@ -222,23 +251,36 @@
 					}
 				},
 				{
-					"name": "crear tienda (onboarding, queda STORE_OWNER)",
+					"name": "password solicitar (reset)",
 					"request": {
 						"method": "POST",
-						"url": "{{baseUrl}}/auth/tiendas",
+						"url": "{{baseUrl}}/auth/password/solicitar",
 						"header": [
 							{
 								"key": "Content-Type",
 								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{accessToken}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\"nombre\":\"Mi Tienda\",\"slug\":\"mi-tienda\"}"
+							"raw": "{\"email\":\"cliente1@example.com\"}"
+						}
+					}
+				},
+				{
+					"name": "password confirmar (código + nueva)",
+					"request": {
+						"method": "POST",
+						"url": "{{baseUrl}}/auth/password/confirmar",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"token\":\"PEGAR-CODIGO\",\"password\":\"NuevaClave123\"}"
 						}
 					}
 				}

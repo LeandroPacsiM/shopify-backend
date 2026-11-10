@@ -1,32 +1,27 @@
-# React + TypeScript + Vite
+# SPA staff (React + Vite) — prueba visual del backend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Rutas: `/login` → `/registro` → `/email` → trial → `/tiendas/nueva` →
+`/totp` (2FA obligatorio antes de cobrar) → `/admin`. El JWT vive solo en
+memoria (`AuthContext`); el refresh va en cookie HttpOnly.
 
-Currently, two official plugins are available:
+## Uso local
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Backend con perfil `local` (migra demo y expone `:8080`):
+   ```powershell
+   cd backend
+   ./mvnw spring-boot:run '-Dspring-boot.run.profiles=local'
+   ```
+2. SPA (proxy `/auth` y `/api` → `localhost:8080`, ver `vite.config.ts`):
+   ```powershell
+   cd frontend
+   npm run dev
+   ```
+   Abrir `http://localhost:5173`.
 
-## React Compiler
+## Guion trial (ADR-017)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Registro → email (código del correo) → login → **modo trial** (JWT
+`mfa=pendiente`: crea tienda + lee, la escritura en admin es 403) →
+`/totp` (QR + backup codes) → login con código (JWT `mfa=completa`) →
+suscribir y operar. La insignia Trial/Completa sale del claim `mfa`
+(solo UI, la autorización real la hace el backend).

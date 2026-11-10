@@ -65,6 +65,34 @@ export async function loginPaso2(
   return (await res.json()) as TokensResponse;
 }
 
+/**
+ * Entrada trial pre-2FA (ADR-017): mismo endpoint sin código ni backup.
+ * Solo funciona si el usuario aún no enroló (si ya tiene 2FA, 409).
+ * Devuelve JWT `mfa=pendiente`: crea tienda + lee, no escribe en admin.
+ */
+export async function loginPaso2Trial(email: string, password: string): Promise<TokensResponse> {
+  const res = await fetch('/auth/login/totp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ email: email.trim(), password }),
+  });
+  if (!res.ok) throw new Error(await leerError(res));
+  return (await res.json()) as TokensResponse;
+}
+
+/** Lee el claim `mfa` del JWT en memoria (sin verificar firma; solo UI). */
+export function leerMfa(accessToken: string): 'pendiente' | 'completa' | null {
+  try {
+    const payload = JSON.parse(atob(accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (payload?.mfa === 'pendiente') return 'pendiente';
+    if (payload?.mfa === 'completa') return 'completa';
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function refreshSesion(): Promise<TokensResponse> {
   const res = await fetch('/auth/refresh', {
     method: 'POST',

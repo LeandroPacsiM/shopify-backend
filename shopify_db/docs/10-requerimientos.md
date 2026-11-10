@@ -19,8 +19,8 @@
 | ID | Requerimiento | Estado |
 |---|---|---|
 | RF-AUTH-01 | (retirado en F4b) Registro legacy eliminado con V23; ver RF-AUTH-09/10 | — |
-| RF-AUTH-02 | Enrolamiento TOTP staff: QR → primer código → habilitado + 10 backup codes; sin enrolar no hay sesión (CUSTOMER exento, passwordless) | BD + BE |
-| RF-AUTH-03 | Login staff (password + TOTP/backup, JWT 15 min + refresh rotado V8) y CUSTOMER (código + JWT 15 min + refresh 7 días rotado V21); audiencias disjuntas `tienda-admin` / `tienda-storefront` | BD + BE |
+| RF-AUTH-02 | Enrolamiento TOTP staff: QR → primer código → habilitado + 10 backup codes; pre-2FA hay sesión limitada trial (crear tienda + enrolar + lectura, JWT `mfa=pendiente`, ADR-017); 2FA obligatorio para cobrar/equipar/transferir (CUSTOMER exento, passwordless) | BD + BE |
+| RF-AUTH-03 | Login staff (password + challenge; TOTP/backup si enrolado; JWT 15 min + refresh rotado V8) y CUSTOMER (código + JWT 15 min + refresh 7 días rotado V21); JWT staff con claim `mfa` (completa/pendiente) + deny-list de escritura para pendiente; audiencias disjuntas `tienda-admin` / `tienda-storefront` | BD + BE |
 | RF-AUTH-04 | Lockout: contar intentos, bloquear tras el umbral; respuesta genérica que no revela si el email existe | BD + BE |
 | RF-AUTH-05 | Reuso de refresh rotado revoca la familia entera; logout revoca por sesión/familia; job limpia expiradas | BE |
 | RF-AUTH-06 | Reset de 2FA por admin para usuarios bloqueados (re-enrolar con QR) | BE |

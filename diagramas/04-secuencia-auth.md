@@ -1,4 +1,4 @@
-# 04 — Secuencia Auth staff + CUSTOMER (RF-AUTH-09/10, ADR-016 aplicado en F4)
+# 04 — Secuencia Auth staff + CUSTOMER (RF-AUTH-09/10, ADR-016/017 aplicados)
 
 ## Registro staff + enrolamiento (`POST /auth/registro-administrativo`, sin permisos)
 
@@ -10,7 +10,7 @@ sequenceDiagram
     participant R as Repositorios
     participant D as PostgreSQL
 
-    U->>C: POST /auth/registro (email, password)
+    U->>C: POST /auth/registro-administrativo (email, password)
     C->>S: registrarAdministrativo()
     S->>R: existePorEmail? (409 si sí)
     S->>D: TX: usuario (sin CUSTOMER, sin rol)
@@ -22,7 +22,7 @@ sequenceDiagram
     C-->>U: 200 enrolado (códigos una sola vez)
 ```
 
-## Login staff + refresh (`aud=tienda-admin`)
+## Login staff + refresh (`aud=tienda-admin`, trial ADR-017)
 
 ```mermaid
 sequenceDiagram
@@ -34,16 +34,24 @@ sequenceDiagram
     U->>C: POST /auth/login (email, password)
     C->>S: passwordOK? (genérico si no, +intento, bloqueo si toca)
     S->>S: email verificado? (409 si no; enrolar sí pudo antes)
-    C-->>U: 200 challenge TOTP requerido
-    U->>C: POST /auth/totp/verificar (código o backup code)
-    C->>S: verifica (ventana ±1 o hash + usado_en)
-    S->>D: TX: resetea intentos + ultimo_acceso + sesión (token_hash, familia nueva)
-    C-->>U: JWT 15min + refresh opaco (HttpOnly)
+    C-->>U: 200 challenge (requiereTotp: enrolar si es nuevo)
+    alt sin enrolar (trial)
+        U->>C: POST /auth/login/totp (email, password, sin código)
+        S->>D: TX: resetea intentos + ultimo_acceso + sesión limitada
+        C-->>U: JWT 15min `mfa=pendiente` + refresh (solo trial)
+        U->>C: POST /auth/tiendas (JWT limitado → nace STORE_OWNER)
+    else enrolado
+        U->>C: POST /auth/login/totp (código o backup code)
+        C->>S: verifica (ventana ±1 o hash + usado_en)
+        S->>D: TX: resetea intentos + ultimo_acceso + sesión (token_hash, familia nueva)
+        C-->>U: JWT 15min `mfa=completa` + refresh opaco (HttpOnly)
+    end
     U->>C: POST /auth/refresh (refresh)
     C->>S: hash vigente y no revocado?
-    S->>D: TX: revoca vieja (reemplazado_por) + crea nueva misma familia
+    S->>D: TX: revoca vieja (reemplazado_por) + crea nueva misma familia (re-deriva `mfa` del flag)
     C-->>U: JWT + refresh nuevos
     Note over C,D: reuso de refresh rotado = revocar familia entera
+    Note over C,D: escritura /api/admin con pendiente = 403 (deny-list)
 ```
 
 ## Auth CUSTOMER passwordless (RF-AUTH-10, `aud=tienda-storefront`)
@@ -90,7 +98,7 @@ sequenceDiagram
     participant S as TiendaOnboardingService
     participant D as PostgreSQL
 
-    M->>C: POST /auth/tiendas (JWT verificado + TOTP, nombre, slug)
+    M->>C: POST /auth/tiendas (JWT staff, limitado trial o completo, nombre, slug)
     C->>S: crear(usuarioId)
     S->>D: slug único? (409 si existe)
     S->>D: TX: tienda activa + vínculo STORE_OWNER + suscripción pendiente + auditoría
@@ -107,7 +115,7 @@ sequenceDiagram
     participant S as AuthService
     participant D as PostgreSQL
 
-    U->>C: POST /auth/registro (email, password)
+    U->>C: POST /auth/registro-administrativo (email, password)
     C->>S: registrarAdministrativo() + emite token verificación (24h, solo hash)
     S->>D: TX: usuario + cliente + rol + token_cuenta
     S-->>U: correo con código (Resend HTTPS)

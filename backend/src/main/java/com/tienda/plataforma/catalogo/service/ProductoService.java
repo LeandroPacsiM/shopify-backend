@@ -11,6 +11,7 @@ import com.tienda.plataforma.catalogo.dto.CrearVarianteRequest;
 import com.tienda.plataforma.catalogo.dto.ProductoResponse;
 import com.tienda.plataforma.catalogo.dto.VarianteResponse;
 import com.tienda.plataforma.catalogo.entity.Producto;
+import com.tienda.plataforma.shared.exception.SolicitudInvalidaException;
 import com.tienda.plataforma.catalogo.entity.ProductoVariante;
 import com.tienda.plataforma.catalogo.repository.ProductoRepository;
 import com.tienda.plataforma.catalogo.repository.ProductoVarianteRepository;
@@ -38,8 +39,15 @@ public class ProductoService {
 	}
 
 	@Transactional(readOnly = true)
-	public List<ProductoResponse> listar(Long tiendaId) {
-		return productos.findByTiendaIdAndEstado(tiendaId, Producto.ACTIVO).stream()
+	public List<ProductoResponse> listar(Long tiendaId, String estado) {
+		String filtro = switch (estado == null ? "" : estado.trim().toLowerCase()) {
+			case "", Producto.ACTIVO -> Producto.ACTIVO;
+			case Producto.BORRADOR -> Producto.BORRADOR;
+			case Producto.ARCHIVADO -> Producto.ARCHIVADO;
+			default -> throw new SolicitudInvalidaException(
+					"estado inválido (activo, borrador o archivado)");
+		};
+		return productos.findByTiendaIdAndEstado(tiendaId, filtro).stream()
 				.map(ProductoResponse::de).toList();
 	}
 

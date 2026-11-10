@@ -747,6 +747,23 @@
 					}
 				},
 				{
+					"name": "listar borradores (?estado=borrador)",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/admin/productos?estado=borrador",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "X-Tienda-Slug",
+								"value": "{{tiendaSlug}}"
+							}
+						]
+					}
+				},
+				{
 					"name": "crear producto",
 					"request": {
 						"method": "POST",

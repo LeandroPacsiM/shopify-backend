@@ -8,12 +8,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tienda.plataforma.catalogo.dto.CrearProductoRequest;
 import com.tienda.plataforma.catalogo.dto.CrearVarianteRequest;
 import com.tienda.plataforma.catalogo.dto.ProductoResponse;
 import com.tienda.plataforma.catalogo.dto.VarianteResponse;
+import com.tienda.plataforma.catalogo.entity.Producto;
 import com.tienda.plataforma.catalogo.service.ProductoService;
 import com.tienda.plataforma.shared.exception.NoAutorizadoException;
 import com.tienda.plataforma.shared.security.TenantContext;
@@ -35,9 +37,10 @@ public class AdminCatalogoController {
 	}
 
 	@GetMapping
-	@Operation(summary = "Lista productos activos de la tienda")
-	public List<ProductoResponse> listar() {
-		return productoService.listar(tiendaId());
+	@Operation(summary = "Lista productos de la tienda por estado (default: activos)")
+	public List<ProductoResponse> listar(
+			@RequestParam(defaultValue = Producto.ACTIVO) String estado) {
+		return productoService.listar(tiendaId(), estado);
 	}
 
 	@PostMapping

@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import AdminShell from '../components/AdminShell';
+import EnrolarTotp from '../components/EnrolarTotp';
 
 export default function AdminPage() {
   const { accessToken, roles, email, mfa, salir, refrescar } = useAuth();
@@ -37,15 +38,13 @@ export default function AdminPage() {
         )}
       </div>
 
-      {mfa === 'pendiente' && (
+      {mfa === 'pendiente' && email && (
         <div className="card">
           <h3>Te falta un paso para vender</h3>
           <p className="muted small" style={{ margin: '0 0 12px' }}>
-            Activa la verificación en dos pasos y tu tienda quedará lista para cobrar.
+            Activa la verificación en dos pasos aquí mismo y tu tienda quedará lista para cobrar.
           </p>
-          <Link to="/totp" className="btn btn-primary" style={{ width: 'auto' }}>
-            Activar verificación
-          </Link>
+          <EnrolarTotp email={email} />
         </div>
       )}
 

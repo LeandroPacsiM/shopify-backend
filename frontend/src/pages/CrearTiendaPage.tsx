@@ -73,6 +73,9 @@ export default function CrearTiendaPage() {
             <Link to="/admin" className="btn btn-primary" style={{ flex: 1, textAlign: 'center' }}>
               Ir a mi panel
             </Link>
+            <Link to="/tiendas" className="btn" style={{ flex: 1, textAlign: 'center' }}>
+              Ver mis tiendas
+            </Link>
           </div>
         </div>
       ) : (

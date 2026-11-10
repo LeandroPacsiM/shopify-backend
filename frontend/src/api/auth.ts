@@ -26,6 +26,23 @@ export interface TiendaCreadaResponse {
   activa: boolean;
 }
 
+export interface MiTienda {
+  id: number;
+  nombre: string;
+  slug: string;
+  activa: boolean;
+  rolTienda: string;
+}
+
+export async function misTiendas(accessToken: string): Promise<MiTienda[]> {
+  const res = await fetch('/auth/tiendas', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(await leerError(res));
+  return (await res.json()) as MiTienda[];
+}
+
 async function leerError(res: Response): Promise<string> {
   try {
     const data = await res.json();

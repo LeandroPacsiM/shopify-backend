@@ -139,6 +139,19 @@
 					}
 				},
 				{
+					"name": "mis tiendas (membresias, trial y completo)",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/auth/tiendas",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						]
+					}
+				},
+				{
 					"name": "escribir con limitada = 403 (deny-list ADR-017)",
 					"request": {
 						"method": "POST",

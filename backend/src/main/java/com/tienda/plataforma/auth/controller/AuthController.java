@@ -1,6 +1,7 @@
 package com.tienda.plataforma.auth.controller;
 
 import java.time.Duration;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -9,6 +10,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tienda.plataforma.auth.dto.ConfirmarTotpRequest;
 import com.tienda.plataforma.auth.dto.CrearTiendaRequest;
+import com.tienda.plataforma.auth.dto.MiTiendaResponse;
 import com.tienda.plataforma.auth.dto.CredencialesRequest;
 import com.tienda.plataforma.auth.dto.EmailRequest;
 import com.tienda.plataforma.auth.dto.LoginRequest;
@@ -62,6 +65,18 @@ public class AuthController {
 	public RegistroResponse registroAdministrativo(
 			@Valid @RequestBody RegistroAdministrativoRequest req) {
 		return authService.registrarAdministrativo(req);
+	}
+
+	@GetMapping("/tiendas")
+	@Operation(summary = "Lista las tiendas del comerciante autenticado (membresías, funciona en trial)")
+	public List<MiTiendaResponse> misTiendas() {
+		Object principal = SecurityContextHolder.getContext().getAuthentication() == null
+				? null
+				: SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+		if (!(principal instanceof Long usuarioId)) {
+			throw new NoAutorizadoException("sin autenticación");
+		}
+		return onboarding.misTiendas(usuarioId);
 	}
 
 	@PostMapping("/tiendas")

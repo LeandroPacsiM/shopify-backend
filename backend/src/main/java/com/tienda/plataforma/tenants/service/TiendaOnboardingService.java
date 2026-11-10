@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.tienda.plataforma.auth.dto.CrearTiendaRequest;
+import com.tienda.plataforma.auth.dto.MiTiendaResponse;
 import com.tienda.plataforma.auth.dto.TiendaCreadaResponse;
 import com.tienda.plataforma.auth.repository.UsuarioRepository;
 import com.tienda.plataforma.platform.facturacion.entity.Suscripcion;
@@ -70,5 +71,18 @@ public class TiendaOnboardingService {
 		auditoria.registrar("tiendas", tienda.getId(), "tienda.crear");
 		return new TiendaCreadaResponse(tienda.getId(), tienda.getNombre(), tienda.getSlug(),
 				tienda.getActiva());
+	}
+
+	/**
+	 * Mis tiendas: membresías del usuario con datos básicos para elegir
+	 * contexto. Solo lectura, sin esquema nuevo. Funciona con JWT limitado
+	 * (trial) y completo.
+	 */
+	@Transactional(readOnly = true)
+	public java.util.List<MiTiendaResponse> misTiendas(Long usuarioId) {
+		return vinculos.findByUsuarioId(usuarioId).stream()
+				.map(v -> new MiTiendaResponse(v.getTienda().getId(), v.getTienda().getNombre(),
+						v.getTienda().getSlug(), v.getTienda().getActiva(), v.getRolTienda()))
+				.toList();
 	}
 }

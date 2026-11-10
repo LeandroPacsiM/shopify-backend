@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import AdminPage from './pages/AdminPage';
 import CrearTiendaPage from './pages/CrearTiendaPage';
+import TiendasPage from './pages/TiendasPage';
 import EmailPage from './pages/EmailPage';
 import LoginPage from './pages/LoginPage';
 import PasswordPage from './pages/PasswordPage';
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/password" element={<PasswordPage />} />
           <Route path="/totp" element={<TotpPage />} />
           <Route path="/tiendas/nueva" element={<CrearTiendaPage />} />
+          <Route path="/tiendas" element={<TiendasPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

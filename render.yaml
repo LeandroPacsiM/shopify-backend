@@ -24,8 +24,8 @@ services:
       - key: CORS_ORIGENES
         sync: false
       - key: MAIL_PROVEEDOR
-        value: resend
-      - key: MAIL_RESEND_KEY
+        value: brevo
+      - key: MAIL_BREVO_KEY
         sync: false
       - key: MAIL_REMITENTE
         sync: false
